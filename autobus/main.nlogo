@@ -1,4 +1,19 @@
+globals[
+  hours
+  minutes
+]
 
+to setup
+  set hours 0
+  set minutes 0
+  reset-ticks
+end
+
+to go
+  set minutes (floor(ticks / 60)) mod 60
+  set hours (floor(ticks / 3600)) mod 24
+  tick
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -26,6 +41,79 @@ GRAPHICS-WINDOW
 1
 ticks
 30.0
+
+BUTTON
+143
+10
+206
+43
+NIL
+go
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+4
+10
+67
+43
+NIL
+setup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+MONITOR
+652
+11
+709
+56
+NIL
+hours
+0
+1
+11
+
+MONITOR
+710
+11
+767
+56
+NIL
+minutes
+0
+1
+11
+
+BUTTON
+131
+47
+206
+80
+go once
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
