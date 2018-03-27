@@ -4,6 +4,7 @@ globals[
 ]
 
 to setup
+  clear-all
   reset-ticks
   set hours 0
   set minutes 0
