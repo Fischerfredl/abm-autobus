@@ -3,7 +3,14 @@ globals[
   minutes
 ]
 
-to setup
+patches-own[
+  street
+  boardwalk
+  misc
+]
+
+;; resets everything and reloads the map
+to reset-complete
   clear-all
   reset-ticks
   set hours 0
@@ -11,18 +18,70 @@ to setup
   setup-patches
 end
 
+;; resets everything but the map (to save loading time)
+to setup
+  reset-ticks
+  set hours 0
+  set minutes 0
+end
+
 to setup-patches
-  file-open "maplayers/street.txt"
+  ;; fill patch attributes
+  file-open "maplayers/layer_rest.txt" ;; layer containing misc objects
   foreach sort patches [ p ->
     ask p [
       if not (file-at-end?)[
-        if file-read > -9999 [
-          set pcolor white
-        ]
+        set misc file-read
       ]
     ]
   ]
   file-close
+
+  file-open "maplayers/layer_street.txt" ;; layer containing street
+  foreach sort patches [ p ->
+    ask p [
+      if not (file-at-end?)[
+          set street file-read
+      ]
+    ]
+  ]
+  file-close
+
+
+  file-open "maplayers/layer_boardwalk.txt" ;; layer containing boardwalk
+  foreach sort patches [ p ->
+    ask p [
+      if not (file-at-end?)[
+          set boardwalk file-read
+      ]
+    ]
+  ]
+  file-close
+
+  ;; color patches
+  ask patches [
+    if (misc = 5) or (misc = 10) or (misc = 12) or (misc = 1) or (misc = 2)[ ;; dark_green, green_area, schraffur, abschnitt, bauflaeche
+      set pcolor green
+    ]
+    if (misc = 6) or (misc = 7) or (misc = 8) or (misc = 9)[ ;; enterprises
+      set pcolor orange
+    ]
+    if misc = 13 [ ;; tram
+      set pcolor red
+    ]
+    if misc = 3 [ ;; bhouse
+      set pcolor yellow
+    ]
+    if street = 1 [ ;; street
+      set pcolor gray
+    ]
+    if misc = 11 [ ;; no_car
+      set pcolor blue
+    ]
+    if boardwalk = 1 [ ;; boardwalk
+      set pcolor white
+    ]
+  ]
 end
 
 to go
@@ -78,10 +137,10 @@ NIL
 BUTTON
 7
 93
-70
+124
 126
 NIL
-setup
+reset-complete
 NIL
 1
 T
@@ -121,6 +180,23 @@ BUTTON
 162
 go once
 go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+130
+93
+193
+126
+NIL
+setup
 NIL
 1
 T
