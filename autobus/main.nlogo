@@ -10,7 +10,7 @@ patches-own[
 ]
 
 ;; resets everything and reloads the map
-to reset-complete
+to setup-complete
   clear-all
   reset-ticks
   set hours 0
@@ -47,7 +47,6 @@ to setup-patches
   ]
   file-close
 
-
   file-open "maplayers/layer_boardwalk.txt" ;; layer containing boardwalk
   foreach sort patches [ p ->
     ask p [
@@ -72,11 +71,11 @@ to setup-patches
     if misc = 3 [ ;; bhouse
       set pcolor yellow
     ]
+    if (misc = 11) or (misc = 4) [ ;; no_car, bus_line
+      set pcolor blue
+    ]
     if street = 1 [ ;; street
       set pcolor gray
-    ]
-    if misc = 11 [ ;; no_car
-      set pcolor blue
     ]
     if boardwalk = 1 [ ;; boardwalk
       set pcolor white
@@ -140,7 +139,7 @@ BUTTON
 124
 126
 NIL
-reset-complete
+setup-complete
 NIL
 1
 T
