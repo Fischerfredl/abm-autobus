@@ -258,6 +258,18 @@ true
 0
 Polygon -7500403 true true 150 0 0 150 105 150 105 293 195 293 195 150 300 150
 
+autobus
+false
+0
+Polygon -7500403 true true 0 225 30 45 255 45 300 225
+Circle -16777216 true false 195 180 90
+Circle -16777216 true false 15 180 90
+Circle -7500403 true true 32 195 58
+Circle -7500403 true true 210 195 58
+Rectangle -16777216 true false 60 75 105 135
+Rectangle -16777216 true false 195 75 240 135
+Rectangle -16777216 false false 120 90 180 210
+
 box
 false
 0
@@ -288,16 +300,6 @@ Polygon -16777216 true false 150 255 135 225 120 150 135 120 150 105 165 120 180
 Circle -16777216 true false 135 90 30
 Line -16777216 false 150 105 195 60
 Line -16777216 false 150 105 105 60
-
-car
-false
-0
-Polygon -7500403 true true 300 180 279 164 261 144 240 135 226 132 213 106 203 84 185 63 159 50 135 50 75 60 0 150 0 165 0 225 300 225 300 180
-Circle -16777216 true false 180 180 90
-Circle -16777216 true false 30 180 90
-Polygon -16777216 true false 162 80 132 78 134 135 209 135 194 105 189 96 180 89
-Circle -7500403 true true 47 195 58
-Circle -7500403 true true 195 195 58
 
 circle
 false
