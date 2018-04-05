@@ -5,10 +5,14 @@ globals [
   routeTB
   routeBT
   schedule
+
+  max-bikers
+  bikers-spawn-points
 ]
 
 breed [busses bus] ;; agents, representing the autonomus bus
 breed [nodes node] ;; nodes are agents representing the stops and turning points of the route the bus drives along
+breed [bikers biker]
 
 patches-own [
   street
@@ -26,16 +30,21 @@ busses-own [
   ticks-since-here
 ]
 
-
 nodes-own [
   busstop? ;; bool determining wether this is a busstop or not
   name     ;; name of the node for identification
+]
+
+bikers-own [
+  velocity
+  time-alive
 ]
 
 ;; resets everything and reloads the map
 to setup-map
   clear-patches
   setup-patches
+  setup
 end
 
 ;; resets everything but the map (to save loading time)
@@ -45,6 +54,7 @@ to setup
   set minutes 0
   setup-bus
   setup-schedule
+  setup-bikers
 end
 
 to setup-schedule
@@ -251,7 +261,83 @@ to go
   if ([status] of one-of busses) = "driving" [
     busDrive
   ]
+
+  process-bikers
   tick
+end
+
+
+;; ===== BIKER IMPLEMENTATION =====
+
+;; === public ===
+
+;; used in setup
+;; setup global variables
+to setup-bikers
+  if (max-bikers = 0) [ set max-bikers 30] ;; set only if not already set via slider
+  set bikers-spawn-points [[278 611] [17 534] [384 44] [615 21] [884 302]]
+end
+
+;; used in go
+to process-bikers
+  bikers-spawn
+  bikers-move
+  bikers-kill
+end
+
+;; === private ===
+
+;; spawn bikers on every spawn-poin
+to bikers-spawn
+  foreach bikers-spawn-points [
+    n ->
+    if (count bikers < max-bikers and (ticks mod 60) = 0) [  ;; spawn biker every minute, not more than bikers-max
+      create-bikers 1 [
+        setxy (item 0 n) (item 1 n)
+        set size 10
+        set velocity 5
+        set time-alive 0
+        set color red
+      ]
+    ]
+  ]
+end
+
+;; move one biker. seeks possible direction to move
+to biker-move
+  let turn 0
+  let dest patch-at-heading-and-distance heading velocity
+
+  ;; loop looking for turn angle
+  while [turn < 360 and (dest = nobody or ([street] of dest) != 1)] [
+    ifelse (turn >= 0) [set turn ((turn + 1) * -1)] [set turn (turn * -1)]
+    set dest patch-at-heading-and-distance (heading + turn) velocity
+  ]
+
+  ;; turn and move only if loop successfull
+  if (not (turn >= 360)) [
+    set heading ( heading + turn )
+    fd velocity
+  ]
+end
+
+;; move all bikers and increase live counter
+to bikers-move
+  ask bikers [
+    biker-move
+    set time-alive time-alive + 1
+  ]
+end
+
+;; kill bikers near spawn points
+to bikers-kill
+  ask bikers [
+    foreach bikers-spawn-points [
+      n ->
+      ;; die if close to spawn point and lived longer then a minute
+      if (time-alive > 60 and (distancexy (item 0 n) (item 1 n) < 20)) [die]
+    ]
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -704,7 +790,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.0.3
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
