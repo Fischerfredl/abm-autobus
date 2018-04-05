@@ -5,7 +5,6 @@ globals [
   routeTB
   routeBT
   schedule
-
   max-bikers
   bikers-spawn-points
 ]
@@ -70,119 +69,6 @@ to setup
   setup-schedule
   setup-bikers
   setup-pedestrians
-end
-
-to setup-schedule
-  set schedule ["00:15" "02:15" "03:15" "04:15" "05:15"] ;; just for testing
-end
-
-to setup-bus
-  setup-bustrack
-  create-busses 1 [
-    set shape "autobus"
-    setxy 797 215
-    set heading 0
-    set size 30
-    set target node 5
-    set ticks-since-here 0
-    set canDrive? true
-    set route routeTB
-  ]
-end
-
-to busDrive
-  ask busses [
-    if status = "driving" and canDrive? = true [
-      ifelse distance target <= 3 [
-        face target
-        move-to target
-        set route remove-item 0 route
-        ifelse length route != 0 [
-          set target item 0 route
-        ]
-        [
-          set status "waiting"
-          ifelse [name] of target = "stop_tram" [
-            set route routeTB
-          ]
-          [
-            set route routeBT
-          ]
-        ]
-        ]
-        [
-          face target
-          fd 3
-        ]
-    ]
-  ]
-end
-
-;; bus idles for ten ticks
-to busWait
-  ask busses [
-    ifelse ticks-since-here < 10 [
-      set ticks-since-here ticks-since-here + 1
-    ]
-    [
-      set ticks-since-here 0
-      set status "driving"
-    ]
-  ]
-end
-
-;; sets up the nodes which enable the bus to move along the route
-to setup-bustrack
-  let coords [172 517 166 384 165 365 415 346 733 320 723 216 797 208] ;; xy-coords of the nodes
-  create-nodes 7 [
-    set hidden? true ;; hide, because nodes are just locigal elements
-  ]
-
-  let counter 0
-  foreach sort nodes [ p ->
-    ask p [
-    if counter = 0 [setxy (item 0 coords) (item 1 coords)
-                    set busstop? true
-                    set name "stop_bhouse"] ;; bus stop at the boarding house
-    if counter = 1 [setxy (item 2 coords) (item 3 coords)
-                    set busstop? true
-                    set name "stop_enterpriseC"] ;; bus stop at enterprise C
-    if counter = 2 [setxy (item 4 coords) (item 5 coords)
-                    set busstop? false
-                    set name "turn_1"] ;; first turn on the route from boarding house to tram station TZI
-    if counter = 3 [setxy (item 6 coords) (item 7 coords)
-                    set busstop? true
-                    set name "stop_center"] ;; bus stop at road "Forschungsallee"
-    if counter = 4 [setxy (item 8 coords) (item 9 coords)
-                    set busstop? false
-                    set name "turn_2"] ;; second turn on the route from boarding house to tram station TZI
-    if counter = 5 [setxy (item 10 coords) (item 11 coords)
-                    set busstop? false
-                    set name "turn_3"] ;; third turn on the route from boarding house to tram station TZI
-    if counter = 6 [setxy (item 12 coords) (item 13 coords)
-                    set busstop? true
-                    set name "stop_tram"] ;; bus stop at the tram station TZI
-    ]
-    set counter counter + 1
-  ]
-
-  ;; set up the two routes by placing the nodes in the respective order in a global list
-  set routeBT [0 0 0 0 0 0 0] ;; fill lists with dummy values
-  set routeTB [0 0 0 0 0 0 0]
-  ;; replace dummy values in first route with nodes in right order
-  set routeBT replace-item 0 routeBT (one-of nodes with [name = "stop_bhouse"])
-  set routeBT replace-item 1 routeBT (one-of nodes with [name = "stop_enterpriseC"])
-  set routeBT replace-item 2 routeBT (one-of nodes with [name = "turn_1"])
-  set routeBT replace-item 3 routeBT (one-of nodes with [name = "stop_center"])
-  set routeBT replace-item 4 routeBT (one-of nodes with [name = "turn_2"])
-  set routeBT replace-item 5 routeBT (one-of nodes with [name = "turn_3"])
-  set routeBT replace-item 6 routeBT (one-of nodes with [name = "stop_tram"])
-  ;; with routeBT complete setting up routeTB becomes easier
-  set counter 6
-  foreach routeBT [ x ->
-    set routeTB replace-item counter routeTB x
-    set counter counter - 1
-  ]
 end
 
 ;; reads the maplayer files from the maplayer folder and tranfers the information to the patches
@@ -282,7 +168,6 @@ to go
   move-pedestrians
   tick
 end
-
 
 ;; ===== BIKER IMPLEMENTATION =====
 
@@ -486,6 +371,122 @@ to walk-normally
         ]
       ]
     ]
+  ]
+end
+
+
+;; ===== BUS IMPLEMENTATION =====
+
+to setup-schedule
+  set schedule ["00:15" "02:15" "03:15" "04:15" "05:15"] ;; just for testing
+end
+
+to setup-bus
+  setup-bustrack
+  create-busses 1 [
+    set shape "autobus"
+    setxy 797 215
+    set heading 0
+    set size 30
+    set target node 5
+    set ticks-since-here 0
+    set canDrive? true
+    set route routeTB
+  ]
+end
+
+to busDrive
+  ask busses [
+    if status = "driving" and canDrive? = true [
+      ifelse distance target <= 3 [
+        face target
+        move-to target
+        set route remove-item 0 route
+        ifelse length route != 0 [
+          set target item 0 route
+        ]
+        [
+          set status "waiting"
+          ifelse [name] of target = "stop_tram" [
+            set route routeTB
+          ]
+          [
+            set route routeBT
+          ]
+        ]
+        ]
+        [
+          face target
+          fd 3
+        ]
+    ]
+  ]
+end
+
+;; bus idles for ten ticks
+to busWait
+  ask busses [
+    ifelse ticks-since-here < 10 [
+      set ticks-since-here ticks-since-here + 1
+    ]
+    [
+      set ticks-since-here 0
+      set status "driving"
+    ]
+  ]
+end
+
+;; sets up the nodes which enable the bus to move along the route
+to setup-bustrack
+  let coords [172 517 166 384 165 365 415 346 733 320 723 216 797 208] ;; xy-coords of the nodes
+  create-nodes 7 [
+    set hidden? true ;; hide, because nodes are just locigal elements
+  ]
+
+  let counter 0
+  foreach sort nodes [ p ->
+    ask p [
+    if counter = 0 [setxy (item 0 coords) (item 1 coords)
+                    set busstop? true
+                    set name "stop_bhouse"] ;; bus stop at the boarding house
+    if counter = 1 [setxy (item 2 coords) (item 3 coords)
+                    set busstop? true
+                    set name "stop_enterpriseC"] ;; bus stop at enterprise C
+    if counter = 2 [setxy (item 4 coords) (item 5 coords)
+                    set busstop? false
+                    set name "turn_1"] ;; first turn on the route from boarding house to tram station TZI
+    if counter = 3 [setxy (item 6 coords) (item 7 coords)
+                    set busstop? true
+                    set name "stop_center"] ;; bus stop at road "Forschungsallee"
+    if counter = 4 [setxy (item 8 coords) (item 9 coords)
+                    set busstop? false
+                    set name "turn_2"] ;; second turn on the route from boarding house to tram station TZI
+    if counter = 5 [setxy (item 10 coords) (item 11 coords)
+                    set busstop? false
+                    set name "turn_3"] ;; third turn on the route from boarding house to tram station TZI
+    if counter = 6 [setxy (item 12 coords) (item 13 coords)
+                    set busstop? true
+                    set name "stop_tram"] ;; bus stop at the tram station TZI
+    ]
+    set counter counter + 1
+  ]
+
+  ;; set up the two routes by placing the nodes in the respective order in a global list
+  set routeBT [0 0 0 0 0 0 0] ;; fill lists with dummy values
+  set routeTB [0 0 0 0 0 0 0]
+  ;; replace dummy values in first route with nodes in right order
+  set routeBT replace-item 0 routeBT (one-of nodes with [name = "stop_bhouse"])
+  set routeBT replace-item 1 routeBT (one-of nodes with [name = "stop_enterpriseC"])
+  set routeBT replace-item 2 routeBT (one-of nodes with [name = "turn_1"])
+  set routeBT replace-item 3 routeBT (one-of nodes with [name = "stop_center"])
+  set routeBT replace-item 4 routeBT (one-of nodes with [name = "turn_2"])
+  set routeBT replace-item 5 routeBT (one-of nodes with [name = "turn_3"])
+  set routeBT replace-item 6 routeBT (one-of nodes with [name = "stop_tram"])
+  ;; with routeBT complete setting up routeTB becomes easier
+  set counter 6
+  foreach routeBT [ x ->
+    set routeTB replace-item counter routeTB x
+    set counter counter - 1
   ]
 end
 @#$#@#$#@
