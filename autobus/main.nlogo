@@ -7,8 +7,8 @@ globals [
   schedule
 ]
 
-breed [busses bus]
-breed [nodes node]
+breed [busses bus] ;; agents, representing the autonomus bus
+breed [nodes node] ;; nodes are agents representing the stops and turning points of the route the bus drives along
 
 patches-own [
   street
@@ -26,23 +26,21 @@ busses-own [
   ticks-since-here
 ]
 
-;; nodes are agents representing the stops and turning points of the route the bus drives along
+
 nodes-own [
   busstop? ;; bool determining wether this is a busstop or not
   name     ;; name of the node for identification
 ]
 
 ;; resets everything and reloads the map
-to setup-complete
-  clear-all
+to setup-map
+  clear-patches
   setup-patches
-  setup
 end
 
 ;; resets everything but the map (to save loading time)
 to setup
-  clear-turtles
-  reset-ticks
+  clear-turtles clear-globals clear-drawing clear-all-plots clear-output reset-ticks ;; clear everything but patches
   set hours 0
   set minutes 0
   setup-bus
@@ -50,7 +48,7 @@ to setup
 end
 
 to setup-schedule
-  set schedule ["00:15" "02:15" "03:15" "04:15" "05:15"]
+  set schedule ["00:15" "02:15" "03:15" "04:15" "05:15"] ;; just for testing
 end
 
 to setup-bus
@@ -95,6 +93,7 @@ to busDrive
   ]
 end
 
+;; bus idles for ten ticks
 to busWait
   ask busses [
     ifelse ticks-since-here < 10 [
@@ -107,6 +106,7 @@ to busWait
   ]
 end
 
+;; sets up the nodes which enable the bus to move along the route
 to setup-bustrack
   let coords [172 517 166 384 165 365 415 346 733 320 723 216 797 208] ;; xy-coords of the nodes
   create-nodes 7 [
@@ -160,7 +160,7 @@ to setup-bustrack
   ]
 end
 
-
+;; reads the maplayer files from the maplayer folder and tranfers the information to the patches
 to setup-patches
   ;; fill patch attributes
   file-open "maplayers/layer_rest.txt" ;; layer containing misc objects
@@ -219,6 +219,7 @@ to setup-patches
   ]
 end
 
+;; updates globals "time", "hours" and "minutes"
 to update-time
   set minutes (floor(ticks / 60)) mod 60
   set hours (floor(ticks / 3600)) mod 24
@@ -239,6 +240,7 @@ to update-time
   set time (word hr_str ":" min_str)
 end
 
+;; main function
 to go
   update-time
   if member? time schedule [
@@ -302,7 +304,7 @@ BUTTON
 124
 126
 NIL
-setup-complete
+setup-map
 NIL
 1
 T
@@ -312,28 +314,6 @@ NIL
 NIL
 NIL
 1
-
-MONITOR
-810
-113
-867
-158
-NIL
-hours
-0
-1
-11
-
-MONITOR
-868
-113
-925
-158
-NIL
-minutes
-0
-1
-11
 
 BUTTON
 73
@@ -368,6 +348,17 @@ NIL
 NIL
 NIL
 1
+
+MONITOR
+868
+110
+925
+155
+Time
+time
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
