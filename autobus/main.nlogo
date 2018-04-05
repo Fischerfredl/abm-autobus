@@ -13,6 +13,20 @@ globals [
 breed [busses bus] ;; agents, representing the autonomus bus
 breed [nodes node] ;; nodes are agents representing the stops and turning points of the route the bus drives along
 breed [bikers biker]
+breed [pedestrians pedestrian] ;; breed pedestrians
+
+;; attributes of pedestrians
+pedestrians-own[
+  goalx
+  goaly
+  crossingx
+  crossingy
+  next-patchx
+  next-patchy
+  speed
+  arrived?
+  crossing-street?
+]
 
 patches-own [
   street
@@ -55,6 +69,7 @@ to setup
   setup-bus
   setup-schedule
   setup-bikers
+  setup-pedestrians
 end
 
 to setup-schedule
@@ -263,6 +278,8 @@ to go
   ]
 
   process-bikers
+  spawn-pedestrians
+  move-pedestrians
   tick
 end
 
@@ -336,6 +353,138 @@ to bikers-kill
       n ->
       ;; die if close to spawn point and lived longer then a minute
       if (time-alive > 60 and (distancexy (item 0 n) (item 1 n) < 20)) [die]
+    ]
+  ]
+end
+
+
+;; ===== Pedestrian IMPLEMENTATION =====
+
+to setup-pedestrians
+  ask pedestrians[die]
+end
+
+to spawn-pedestrians
+  if (ticks mod 60 = 0) [
+    create-pedestrians 1 [
+      set arrived? false
+      set shape "person"
+      set color red
+      set xcor 307
+      set ycor 507
+      set goalx 373
+      set goaly 56
+      set size 10
+      facexy goalx goaly
+    ]
+  ]
+end
+
+;;
+; move the pedestrians on the map
+;;
+to move-pedestrians
+  ;check if a steet has to be crossed
+  check-crossing
+
+  ask pedestrians [
+    ;die if the goal has been reached
+    ifelse ([pxcor] of patch-here = goalx and [pycor] of patch-here = goaly)[
+      die
+    ]
+    [
+      ;cross the street if crossing-street? is true or walk normally otherwise
+      ifelse (crossing-street? = true) [
+        cross-street
+      ]
+      [
+        walk-normally
+      ]
+    ]
+  ]
+end
+
+;;
+; check if a pedestrian is standing at a street that can be crossed
+;;
+to check-crossing
+  ask pedestrians [
+    if ([pxcor] of patch-here = 361 and [pycor] of patch-here = 354) [
+      set crossing-street? true
+      set crossingx 363
+      set crossingy 344
+    ]
+
+    if ([pxcor] of patch-here = 378 and [pycor] of patch-here = 256) [
+      set crossing-street? true
+      set crossingx 378
+      set crossingy 231
+    ]
+  ]
+end
+
+
+;;
+; cross the street if the other side has not been reached yet
+;;
+to cross-street
+  ; if the end of the crossing has been reached, face the goal patch again, walk towards it otherwise
+  ifelse ([pxcor] of patch-here = crossingx and [pycor] of patch-here = crossingy) [
+    set crossing-street? false
+    facexy goalx goaly
+  ]
+  [
+    facexy crossingx crossingy
+    fd 1
+  ]
+end
+
+;;
+; READ THIS TO UNDERSTAND WTF IS GOING ON IN THIS FUNCTION
+; check if the patch ahead is walking ground and walk if walkable
+; otherwise check the patches left-and-ahead and right-and-ahead for walking ground and go there if walkable
+; otherwise check the patches left and right for walking ground and go ther if walkable
+; otherwise GET THE FUCK OUT OF HERE!
+;;
+to walk-normally
+  ifelse ([pcolor] of patch-ahead 1 = white or [pcolor] of patch-ahead 1 = blue) [
+    ;walk with 5 km/h
+    fd 1.4
+  ]
+  [
+    ifelse ([pcolor] of patch-left-and-ahead 45 1 = white or [pcolor] of patch-left-and-ahead 45 1 = blue) [
+      set next-patchx ([pxcor] of patch-left-and-ahead 45 1)
+      set next-patchy ([pycor] of patch-left-and-ahead 45 1)
+      facexy next-patchx next-patchy
+      setxy next-patchx next-patchy
+    ]
+    [
+      ifelse ([pcolor] of patch-right-and-ahead 45 1 = white or [pcolor] of patch-right-and-ahead 45 1 = blue) [
+        set next-patchx ([pxcor] of patch-right-and-ahead 45 1)
+        set next-patchy ([pycor] of patch-right-and-ahead 45 1)
+        facexy next-patchx next-patchy
+        setxy next-patchx next-patchy
+      ]
+      [
+        ifelse ([pcolor] of patch-left-and-ahead 90 1 = white or [pcolor] of patch-left-and-ahead 45 1 = blue) [
+          set next-patchx ([pxcor] of patch-left-and-ahead 90 1)
+          set next-patchy ([pycor] of patch-left-and-ahead 90 1)
+          facexy next-patchx next-patchy
+          setxy next-patchx next-patchy
+        ]
+        [
+          ifelse ([pcolor] of patch-right-and-ahead 90 1 = white or [pcolor] of patch-right-and-ahead 90 1 = blue) [
+            set next-patchx ([pxcor] of patch-right-and-ahead 90 1)
+            set next-patchy ([pycor] of patch-right-and-ahead 90 1)
+            facexy next-patchx next-patchy
+            setxy next-patchx next-patchy
+          ]
+          [
+            ; GET THE FUCK OUT!
+            die
+          ]
+        ]
+      ]
     ]
   ]
 end
@@ -790,7 +939,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
