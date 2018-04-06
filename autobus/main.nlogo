@@ -1,4 +1,5 @@
 globals [
+  seconds
   hours
   minutes
   time
@@ -7,12 +8,28 @@ globals [
   schedule
   max-bikers
   bikers-spawn-points
+
+  tram_arrival_ns ;; Second of the arrival of a tram going from north to south
+  tram_arrival_sn ;; Second of the arrival of a tram going from south to north
+  tram_exists_ns ;; Dummy-Variable ob eine Tram existiert (Evtl überflüssig) => Only one tram per direction at once possible
+  tram_exists_sn
+  tram_passengers_ns ;; How many passengers the tram going from north to south is transporting that want to get out at Innovationspark/LFU
+  tram_passengers_sn ;; How many passengers the tram going from south to north is transporting that want to get out at Innovationspark/LFU
+
+  ;; Counting the employees for not over-spawning employees. The function is check-employees
+  count_employees_enterprise_a ;; all employees currently existing that are assigned to Enterprise A
+  count_employees_enterprise_b ;; all employees currently existing that are assigned to Enterprise B
+  count_employees_enterprise_c ;; all employees currently existing that are assigned to Enterprise C
+  count_visitors_bhouse ;; all employees currently existing that are assigned to the Boarding House
 ]
 
 breed [busses bus] ;; agents, representing the autonomus bus
 breed [nodes node] ;; nodes are agents representing the stops and turning points of the route the bus drives along
 breed [bikers biker]
 breed [pedestrians pedestrian] ;; breed pedestrians
+breed [trams tram] ;; agents representing the trams
+breed [tramriders tramrider] ;; agents representing the tramriders
+breed [tr_nodes tr_node] ;; tr_nodes are agents representing the waypoints of the routes of the tramriders
 
 ;; attributes of pedestrians
 pedestrians-own[
@@ -53,6 +70,33 @@ bikers-own [
   time-alive
 ]
 
+trams-own[
+  t_type ;; Type of the Tram. Splitted in two types, the new trams (NF8 Combino and Cityflex) and the old trams (GT6M)
+  t_direction ;; Direction into which the tram goes. 'ns' is for 'north to south' (From Stadtbergen to Haunstetten West). 'sn' is for the opposite direction.
+  t_passengers ;; How many passengers the tram is transporting that want to get out at Innovationspark/LFU (vmtl sinnlos, da globale Variable exisitert)
+  t_stop_duration ;; How long the tram stands at the stop
+  t_duration_after_empty ;; How long the tram stands at the stop after all the passengers wanting to get out left the tram
+  t_duration_after_boarding ;; How long the tram stands at the stop after the boarding is done completely (all the passengers wanting to get out left the tram and all the passengers wanting to get in entered the tram)
+  t_status ;; Current status of the tram: "arriving" = 'Arriving at the stop', "active" = 'Standing at the stop, doors open', "closed" = 'Standing at the stop, doors locked', "departing" = 'Departing from the stop'
+]
+
+tramriders-own [
+  tr_movement_status ;; Going to Bus stop, waiting, going to work
+  tr_ultimate_destination ;; Enterprise A,B,C or Tram
+  tr_current_destination
+  tr_target
+  tr_waiting_time
+  tr_ragelimit
+  tr_stop
+  tr_random_val
+]
+
+tr_nodes-own [
+  tr_n_id
+  tr_n_name
+]
+
+
 ;; resets everything and reloads the map
 to setup-map
   clear-patches
@@ -65,10 +109,13 @@ to setup
   clear-turtles clear-globals clear-drawing clear-all-plots clear-output reset-ticks ;; clear everything but patches
   set hours 0
   set minutes 0
+  set seconds 0
   setup-bus
   setup-schedule
   setup-bikers
   setup-pedestrians
+  setup-tr_nodes
+
 end
 
 ;; reads the maplayer files from the maplayer folder and tranfers the information to the patches
@@ -132,6 +179,7 @@ end
 
 ;; updates globals "time", "hours" and "minutes"
 to update-time
+  set seconds ticks mod 60
   set minutes (floor(ticks / 60)) mod 60
   set hours (floor(ticks / 3600)) mod 24
   let min_str ""
@@ -166,8 +214,12 @@ to go
   process-bikers
   spawn-pedestrians
   move-pedestrians
+  check-tram
+  move-tramriders
   tick
 end
+
+
 
 ;; ===== BIKER IMPLEMENTATION =====
 
@@ -489,6 +541,943 @@ to setup-bustrack
     set counter counter - 1
   ]
 end
+
+
+
+;; ===== TRAM IMPLEMENTATION =====
+
+to check-schedule
+  ;; Tram schedule for the station Innovationspark/LFU (Date of Last Update: 31.03.2018)
+  ;; For simplifying purposes, trams regularly only arrive at a full minute
+  if seconds = 0 [
+    if hours = 0 [
+      if (minutes = 13 or minutes = 0)[ ;;minutes = 0 ist testweise, nachher wieder rauswerfen
+        set tram_arrival_ns 1]
+      if (minutes = 13 or minutes = 28 or minutes = 0)[
+        set tram_arrival_sn 1]
+    ]
+    if hours = 4 [
+      if (minutes = 47 or minutes = 58)[
+        set tram_arrival_ns 1]
+      if (minutes = 58)[
+        set tram_arrival_sn 1]
+    ]
+    if hours = 5 [
+      if (minutes = 13 or minutes = 28 or minutes = 43 or minutes = 52 or minutes = 58)[
+        set tram_arrival_ns 1]
+      if (minutes = 13 or minutes = 28 or minutes = 43 or minutes = 58)[
+        set tram_arrival_sn 1]
+    ]
+    if hours = 6 [
+      if (minutes = 7 or minutes = 13 or minutes = 22 or minutes = 28 or minutes = 38 or minutes = 48 or minutes = 55)[
+        set tram_arrival_ns 1]
+      if (minutes = 10 or minutes = 18 or minutes = 25 or minutes = 33 or minutes = 40 or minutes = 48 or minutes = 53 or minutes = 58)[
+        set tram_arrival_sn 1]
+    ]
+    if hours = 7 [
+      if (minutes = 3 or minutes = 10 or minutes = 17 or minutes = 22 or minutes = 28 or minutes = 33 or minutes = 38 or minutes = 43 or minutes = 48 or minutes = 53 or minutes = 58)[
+        set tram_arrival_ns 1]
+      if (minutes = 3 or minutes = 8 or minutes = 13 or minutes = 18 or minutes = 23 or minutes = 30 or minutes = 35 or minutes = 40 or minutes = 48 or minutes = 55)[
+        set tram_arrival_sn 1]
+    ]
+    if hours = 8 [
+      if (minutes = 3 or minutes = 8 or minutes = 13 or minutes = 18 or minutes = 25 or minutes = 33 or minutes = 40 or minutes = 48 or minutes = 55)[
+        set tram_arrival_ns 1]
+      if (minutes = 3 or minutes = 10 or minutes = 18 or minutes = 25 or minutes = 33 or minutes = 40 or minutes = 48 or minutes = 55)[
+        set tram_arrival_sn 1]
+    ]
+    if hours = 9 or hours = 10 [
+      if (minutes = 3 or minutes = 10 or minutes = 18 or minutes = 25 or minutes = 33 or minutes = 40 or minutes = 48 or minutes = 55)[
+        set tram_arrival_ns 1]
+      if (minutes = 3 or minutes = 10 or minutes = 18 or minutes = 25 or minutes = 33 or minutes = 40 or minutes = 48 or minutes = 55)[
+        set tram_arrival_sn 1]
+    ]
+    if hours = 11 [
+      if (minutes = 3 or minutes = 10 or minutes = 18 or minutes = 25 or minutes = 33 or minutes = 40 or minutes = 48 or minutes = 55)[
+        set tram_arrival_ns 1]
+      if (minutes = 3 or minutes = 10 or minutes = 18 or minutes = 25 or minutes = 33 or minutes = 40 or minutes = 48 or minutes = 53 or minutes = 58)[
+        set tram_arrival_sn 1]
+    ]
+    if hours = 12 [
+      if (minutes = 3 or minutes = 10 or minutes = 13 or minutes = 18 or minutes = 23 or minutes = 28 or minutes = 33 or minutes = 38 or minutes = 43 or minutes = 48 or minutes = 53 or minutes = 58)[
+        set tram_arrival_ns 1]
+      if (minutes = 3 or minutes = 8 or minutes = 13 or minutes = 18 or minutes = 23 or minutes = 28 or minutes = 33 or minutes = 38 or minutes = 43 or minutes = 48 or minutes = 53 or minutes = 58)[
+        set tram_arrival_sn 1]
+    ]
+    if hours = 13 or hours = 14 or hours = 15 or hours = 16 [
+      if (minutes = 3 or minutes = 8 or minutes = 13 or minutes = 18 or minutes = 23 or minutes = 28 or minutes = 33 or minutes = 38 or minutes = 43 or minutes = 48 or minutes = 53 or minutes = 58)[
+        set tram_arrival_ns 1]
+      if (minutes = 3 or minutes = 8 or minutes = 13 or minutes = 18 or minutes = 23 or minutes = 28 or minutes = 33 or minutes = 38 or minutes = 43 or minutes = 48 or minutes = 53 or minutes = 58)[
+        set tram_arrival_sn 1]
+    ]
+        if hours = 17 [
+      if (minutes = 3 or minutes = 8 or minutes = 13 or minutes = 18 or minutes = 23 or minutes = 28 or minutes = 33 or minutes = 38 or minutes = 43 or minutes = 48 or minutes = 53 or minutes = 58)[
+        set tram_arrival_ns 1]
+      if (minutes = 3 or minutes = 8 or minutes = 13 or minutes = 18 or minutes = 23 or minutes = 28 or minutes = 33 or minutes = 38 or minutes = 43 or minutes = 48 or minutes = 55)[
+        set tram_arrival_sn 1]
+    ]
+    if hours = 18 [
+      if (minutes = 3 or minutes = 8 or minutes = 13 or minutes = 18 or minutes = 25 or minutes = 33 or minutes = 40 or minutes = 48 or minutes = 55)[
+        set tram_arrival_ns 1]
+      if (minutes = 3 or minutes = 10 or minutes = 18 or minutes = 25 or minutes = 33 or minutes = 40 or minutes = 48 or minutes = 55)[
+        set tram_arrival_sn 1]
+    ]
+    if hours = 19 [
+      if (minutes = 3 or minutes = 10 or minutes = 18 or minutes = 25 or minutes = 33 or minutes = 40 or minutes = 48 or minutes = 55)[
+        set tram_arrival_ns 1]
+      if (minutes = 3 or minutes = 10 or minutes = 18 or minutes = 25 or minutes = 33 or minutes = 40 or minutes = 48 or minutes = 55)[
+        set tram_arrival_sn 1]
+    ]
+    if hours = 20 [
+      if (minutes = 3 or minutes = 10 or minutes = 18 or minutes = 25 or minutes = 33 or minutes = 43 or minutes = 58)[
+        set tram_arrival_ns 1]
+      if (minutes = 3 or minutes = 7 or minutes = 13 or minutes = 22 or minutes = 28 or minutes = 37 or minutes = 43 or minutes = 58)[
+        set tram_arrival_sn 1]
+    ]
+    if hours = 21 or hours = 22 or hours = 23[
+      if (minutes = 13 or minutes = 28 or minutes = 43 or minutes = 58)[
+        set tram_arrival_ns 1]
+      if (minutes = 13 or minutes = 28 or minutes = 43 or minutes = 58)[
+        set tram_arrival_sn 1]
+    ]
+  ]
+end
+
+
+to check-tram
+
+  ;; Checking the schedule of the tram
+  check-schedule
+
+  ;; Check the standing-durations of the tram
+  check-times
+
+  ;; Board entering people
+  board-people
+
+  ;; Spawn trams
+  spawn-trams
+
+  ;; Proceed the animations of the trams
+  animate-trams
+
+  ;; Spawn tramriders
+  trams-spawn-tramriders
+
+  ;; resetting the variable of the arrival in order to spawn a tram only once
+  set tram_arrival_ns 0
+  set tram_arrival_sn 0
+end
+
+to check-employees
+  set count_employees_enterprise_a count tramriders with [tr_ultimate_destination = "enterprise a"] + 0 ;; Zeug noch anfügen
+  set count_employees_enterprise_b count tramriders with [tr_ultimate_destination = "enterprise b"] + 0
+  set count_employees_enterprise_c count tramriders with [tr_ultimate_destination = "enterprise c"] + 0
+  set count_visitors_bhouse count tramriders with [tr_ultimate_destination = "boarding house"] + 0
+end
+
+to check-times
+  ;; Calculating the standing time
+  ask trams with [t_status = "active" or t_status = "closed"][set t_stop_duration (t_stop_duration + 1)] ;; Increasing by 1 every second
+
+  ;; Calculating the standing time after the people wanting to get out left the tram
+  ask trams with [t_direction = "ns"][if tram_passengers_ns = 0 [set t_duration_after_empty (t_duration_after_empty + 1)]] ;; Increasing by 1 every second
+  ask trams with [t_direction = "sn"][if tram_passengers_sn = 0 [set t_duration_after_empty (t_duration_after_empty + 1)]] ;; Increasing by 1 every second
+
+  ;; Departure of a tram once it surpassed all standing-duration-minimas
+  ;; Direction: Haunstetten West
+  if tram_exists_ns = 1 [
+    ask trams [if (t_status = "closed" and t_stop_duration > 15 and t_duration_after_empty >= 10 and t_duration_after_boarding >= 10) [set t_status "departing"]]
+  ]
+  ;; Direction: Stadtbergen
+  if tram_exists_sn = 1 [
+    ask trams [if (t_status = "closed" and t_stop_duration > 15 and t_duration_after_empty >= 10 and t_duration_after_boarding >= 10) [set t_status "departing"]]
+  ]
+end
+
+to board-people
+  ;; Boarding of people wanting to get in
+  ;; Direction: Haunstetten West
+  ask trams with [t_direction = "ns"][
+    ;; Defining the people currently getting into the tram
+    let people-getting-in-tram-ns count tramriders with [tr_current_destination = "tram_ns" and xcor = 809 and ycor = 172]
+    ;; Setting a maximum for the number of people being able to enter the tram at the same time based on the trams type (new vs old)
+    if t_type = "old" and people-getting-in-tram-ns > 8 [set people-getting-in-tram-ns 8]
+    if t_type = "new" and people-getting-in-tram-ns > 14 [set people-getting-in-tram-ns 14]
+    ;; Simulating the boarding process as killing the boarding agents (Only if the trams' doors are open)
+    if t_status = "active" [
+      if tram_passengers_ns = 0 [ask n-of people-getting-in-tram-ns tramriders with [tr_current_destination = "tram_ns" and xcor = 809 and ycor = 172] [die]]
+    ]
+    ;; Locking the doors of the tram and starting the counter after everyone entered the tram
+    if tram_passengers_ns = 0 and people-getting-in-tram-ns = 0 and t_duration_after_boarding = 0 [set t_status "closed"]
+    if tram_passengers_ns = 0 and people-getting-in-tram-ns = 0 [set t_duration_after_boarding (t_duration_after_boarding + 1)]
+  ]
+  ;; Direction: Stadtbergen
+  ask trams with [t_direction = "sn"][
+    ;; Defining the people currently getting into the tram
+    let people-getting-in-tram-sn count tramriders with [tr_current_destination = "tram_sn" and xcor = 830 and ycor = 162]
+    ;; Setting a maximum for the number of people being able to enter the tram at the same time based on the trams type (new vs old)
+    if t_type = "old" and people-getting-in-tram-sn > 8 [set people-getting-in-tram-sn 8]
+    if t_type = "new" and people-getting-in-tram-sn > 14 [set people-getting-in-tram-sn 14]
+    ;; Simulating the boarding process as killing the boarding agents
+    if t_status = "active" [
+      if tram_passengers_sn = 0 [ask n-of people-getting-in-tram-sn tramriders with [tr_current_destination = "tram_sn" and xcor = 830 and ycor = 162] [die]]
+    ]
+    ;; Locking the doors of the tram and starting the counter after everyone entered the tram
+    if tram_passengers_sn = 0 and people-getting-in-tram-sn = 0 and t_duration_after_boarding = 0 [set t_status "closed"]
+    if tram_passengers_sn = 0 and people-getting-in-tram-sn = 0 [set t_duration_after_boarding (t_duration_after_boarding + 1)]
+  ]
+end
+
+to spawn-trams
+  ;; Spawning of a tram
+  ;; Direction: Haunstetten West
+  ;; Only if the arrival is true and there is no tram already existing
+  if (tram_arrival_ns = 1 and tram_exists_ns = 0) [
+    create-trams 1 [
+      ;; Setting the model of the tram at random
+      ifelse (random 100) > ((11 / 79) * 100) ;; there are 79 regularly active trams belonging to the swa. Only 11 of them are of the "old" model GT6M
+        [set t_type "new"]
+        [set t_type "old"]
+
+      ;; Setting the initial variables
+      set t_direction "ns"
+      set t_status "arriving"
+      set t_stop_duration 0
+      set t_duration_after_empty 0
+      set t_duration_after_boarding 0
+
+      ;; Setting the appearance, the starting positing and the heading
+      set color green
+      if t_type = "new" [set shape "tram_new"]
+      if t_type = "old" [set shape "tram_old"]
+      set size 80
+      set heading 180
+      setxy 881 349
+
+      ;; Calculating the number of passengers within the tram
+      set tram_passengers_ns floor(1 * 15 * random-float 1.5)
+      ;; Limiting the possible amount of passengers within the trams based on its model, new or old
+      if t_type = "new" [
+        ;; There is an additional subdivision for new trams. 16 out of 68 newer trams have a maximum amount of passengers of 248. The other 52 have a maximum amount of passengers of 228.
+        ifelse random 68 > 16
+          [if tram_passengers_ns > 228 [set tram_passengers_ns 228]] ;; Maximum amount of passengers for NFX Combino Serie 2/3 and Cityflex: 228
+          [if tram_passengers_ns > 248 [set tram_passengers_ns 248]] ;; Maximum amount of passengers for NFX Combino Serie 1: 248
+      ]
+      if t_type = "old" [
+        if tram_passengers_ns > 159 [set tram_passengers_ns 159] ;; Maximum amount of passengers for GT6M: 159
+      ]
+    ]
+    ;; Setting the tram to existent once it's been created
+    set tram_exists_ns 1
+  ]
+
+  ;; Direction: Stadtbergen
+  ;; Only if the arrival is true and there is no tram already existing
+  if (tram_arrival_sn = 1 and tram_exists_sn = 0) [
+    create-trams 1 [
+      ;; Setting the model of the tram at random
+      ifelse (random 100) > ((11 / 79) * 100) ;; there are 79 regularly active trams belonging to the swa. Only 11 of them are of the "old" model GT6M
+        [set t_type "new"]
+        [set t_type "old"]
+
+      ;; Setting the initial variables
+      set t_direction "sn"
+      set t_status "arriving"
+      set t_stop_duration 0
+      set t_duration_after_empty 0
+      set t_duration_after_boarding 0
+
+      ;; Setting the appearance, the starting positing and the heading
+      set color green
+      if t_type = "new" [set shape "tram_new"]
+      if t_type = "old" [set shape "tram_old"]
+      set size 80
+      set heading 0
+      setxy 795 77
+
+      ;; Calculating the number of passengers within the tram
+      set tram_passengers_sn floor(1 * 15 * random-float 1.5)
+      ;; Limiting the possible amount of passengers within the trams based on its model, new or old
+      if t_type = "new" [
+        ;; There is an additional subdivision for new trams. 16 out of 68 newer trams have a maximum amount of passengers of 248. The other 52 have a maximum amount of passengers of 228.
+        ifelse random 68 > 16
+          [if tram_passengers_sn > 228 [set tram_passengers_sn 228]] ;; Maximum amount of passengers for NFX Combino Serie 2/3 and Cityflex: 228
+          [if tram_passengers_sn > 248 [set tram_passengers_sn 248]] ;; Maximum amount of passengers for NFX Combino Serie 1: 248
+      ]
+      if t_type = "old" [
+        if tram_passengers_sn > 159 [set tram_passengers_sn 159] ;; Maximum amount of passengers for GT6M: 159
+      ]
+    ]
+    ;; Setting the tram to existent once it's been created
+    set tram_exists_sn 1
+  ]
+end
+
+to animate-trams
+  ;; Animation for the departure
+  ask trams with [t_status = "departing"][
+    ;; Direction: Haunstetten West
+    if t_direction = "ns"[
+      ;; Killing the tram and setting it to non-existent once it goes out of the map
+      if xcor = 785 and ycor = 85 [set tram_exists_ns 0]
+      if xcor = 785 and ycor = 85 [die]
+      ;; The route of the leaving tram
+      if xcor = 785 and ycor = 105 [setxy 785 85]
+      if xcor = 785 and ycor = 125 [setxy 785 105]
+      if xcor = 795 and ycor = 135 [setxy 785 125]
+      if xcor = 785 and ycor = 125 [set heading 180]
+      if xcor = 805 and ycor = 150 [setxy 795 135]
+      if xcor = 810 and ycor = 160 [setxy 805 150]
+      if xcor = 820 and ycor = 178 [setxy 810 160]
+    ]
+    ;; Direction: Stadtbergen
+    if t_direction = "sn"[
+      ;; Killing the tram and setting it to non-existent once it goes out of the map
+      if xcor = 891 and ycor = 344 [set tram_exists_sn 0]
+      if xcor = 891 and ycor = 344 [die]
+      ;; The route of the leaving tram
+      if xcor = 885 and ycor = 285 [setxy 891 344]
+      if xcor = 875 and ycor = 255 [setxy 885 285]
+      if xcor = 885 and ycor = 285 [set heading 0]
+      if xcor = 860 and ycor = 225 [setxy 875 255]
+      if xcor = 855 and ycor = 215 [setxy 860 225]
+      if xcor = 860 and ycor = 225 [set heading 20]
+      if xcor = 850 and ycor = 203 [setxy 855 215]
+      if xcor = 840 and ycor = 187 [setxy 850 203]
+      if xcor = 830 and ycor = 173 [setxy 840 187]
+    ]
+  ]
+  ;; Arrival of trams
+  ask trams with [t_status = "arriving"][
+    ;; Direction: Haunstetten West
+    if t_direction = "ns"[
+      ;; Activate the tram once it arrived at the stop
+      if xcor = 820 and ycor = 178 [set t_status "active"]
+      ;; The route of the arriving tram
+      if xcor = 830 and ycor = 192 [setxy 820 178]
+      if xcor = 840 and ycor = 208 [setxy 830 192]
+      if xcor = 845 and ycor = 220 [setxy 840 208]
+      if xcor = 850 and ycor = 230 [setxy 845 220]
+      if xcor = 865 and ycor = 260 [setxy 850 230]
+      if xcor = 850 and ycor = 230 [set heading 210]
+      if xcor = 875 and ycor = 290 [setxy 865 260]
+      if xcor = 881 and ycor = 349 and tram_arrival_ns = 0 [setxy 875 290]
+      if xcor = 875 and ycor = 290 [set heading 200]
+    ]
+    ;; Direction: Stadtbergen
+    if t_direction = "sn"[
+      ;; Activate the tram once it arrived at the stop
+      if xcor = 830 and ycor = 173 [set t_status "active"]
+      ;; The route of the arriving tram
+      if xcor = 820 and ycor = 158 [setxy 830 173]
+      if xcor = 815 and ycor = 153 [setxy 820 158]
+      if xcor = 805 and ycor = 135 [setxy 815 153]
+      if xcor = 795 and ycor = 120 [setxy 805 135]
+      if xcor = 795 and ycor = 100 [setxy 795 120]
+      if xcor = 795 and ycor = 120 [set heading 30]
+      if xcor = 795 and ycor = 77 and tram_arrival_sn = 0 [setxy 795 100]
+    ]
+  ]
+end
+
+to trams-spawn-tramriders
+  ;; Spawning tramriders
+  ;; The spawning of the tramriders is subdivisioned by 1. the tram's direction, 2. the tram's model and 3. the tram's doors
+
+  ;; Direction: Haunstetten West
+  ;; Selecting the tram which is being active and going into the right direction for the spawning procedure
+  let active-tram-ns one-of trams with [t_direction = "ns" and t_status = "active"]
+
+  ;; New trams
+  if active-tram-ns != nobody and [t_type] of active-tram-ns = "new"  [
+
+    ;; Door 1 (single door)
+    ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
+    if (tram_exists_ns = 1 and tram_passengers_ns >= 1)[
+      check-employees
+      create-tramriders 1 [
+        ;; Setting the cosmetics
+        set color yellow
+        set size 10
+        ;; Setting the position outside of the trams' door
+        setxy 800 156
+        ;; Setting the variables
+        ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
+        set tr_movement_status "going to bus stop"
+        ;; Calculation of the enterprise the tramrider is working at
+        ;; At first, a random value is calculated in order to assign the person in the following step
+        ;; 40 people are working at Enterprise A, 50 at Enterprise B, 350 at Enterprise C and 5 are included for the Boarding House
+        set tr_random_val random (445 - count_employees_enterprise_a - count_employees_enterprise_b - count_employees_enterprise_c - count_visitors_bhouse)
+        ;; Depending of the result for the random value, one of the four possible destinations is chosen
+        if tr_random_val <= (40 - count_employees_enterprise_a) [set tr_ultimate_destination "enterprise a"]
+        if tr_random_val > (40 - count_employees_enterprise_a) and tr_random_val <= (90 - (count_employees_enterprise_a + count_employees_enterprise_b)) [set tr_ultimate_destination "enterprise b"]
+        if tr_random_val > (90 - (count_employees_enterprise_a + count_employees_enterprise_b)) and tr_random_val <= (440 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) [set tr_ultimate_destination "enterprise c"]
+        if tr_random_val > (440 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) and tr_random_val <= (445 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse)) [set tr_ultimate_destination "boarding house"]
+        ;; Since all tramriders intend to go to the bus stop, the current destination is set to the nearest bus stop, which is the bus stop at the tram
+        set tr_current_destination "bus_stop_tram"
+        ;; The first waypoint after leaving the tram for a tramrider coming from the city is the North Eastern Corner of the TZI
+        ;; The tramrider is facing the waypoint immediatly after leaving the tram
+        set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"]
+        face tr_target
+        ;; Setting the waiting time to 0
+        set tr_waiting_time 0
+        ;; Setting the ragelimt based on probability
+        ifelse random 100 > 20
+          ;; The Maximum waiting time for the bus is 5 Minutes
+          [set tr_ragelimit random 300]
+          ;; 20% of people don't even want to intend the bus
+          [set tr_ragelimit 0]
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_ns (tram_passengers_ns - 1)
+    ]
+
+    ;; Door 2 (double door)
+    ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
+    if (tram_exists_ns = 1 and tram_passengers_ns >= 2)[
+      check-employees
+      create-tramriders 2 [
+        ;; Setting the cosmetics
+        set color yellow
+        set size 10
+        ;; Setting the position outside of the trams' door
+        setxy 804 165
+        ;; Setting the variables
+        ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
+        set tr_movement_status "going to bus stop"
+        ;; Calculation of the enterprise the tramrider is working at
+        ;; At first, a random value is calculated in order to assign the person in the following step
+        ;; 40 people are working at Enterprise A, 50 at Enterprise B, 350 at Enterprise C and 5 are included for the Boarding House
+        set tr_random_val random (445 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse))
+        ;; Depending of the result for the random value, one of the four possible destinations is chosen
+        if tr_random_val <= (40 - count_employees_enterprise_a) [set tr_ultimate_destination "enterprise a"]
+        if tr_random_val > (40 - count_employees_enterprise_a) and tr_random_val <= (90 - (count_employees_enterprise_a + count_employees_enterprise_b)) [set tr_ultimate_destination "enterprise b"]
+        if tr_random_val > (90 - (count_employees_enterprise_a + count_employees_enterprise_b)) and tr_random_val <= (440 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) [set tr_ultimate_destination "enterprise c"]
+        if tr_random_val > (440 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) and tr_random_val <= (445 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse)) [set tr_ultimate_destination "boarding house"]
+        ;; Since all tramriders intend to go to the bus stop, the current destination is set to the nearest bus stop, which is the bus stop at the tram
+        set tr_current_destination "bus_stop_tram"
+        ;; The first waypoint after leaving the tram for a tramrider coming from the city is the North Eastern Corner of the TZI
+        ;; The tramrider is facing the waypoint immediatly after leaving the tram
+        set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"]
+        face tr_target
+        ;; Setting the waiting time to 0
+        set tr_waiting_time 0
+        ;; Setting the ragelimt based on probability
+        ifelse random 100 > 20
+          ;; The Maximum waiting time for the bus is 5 Minutes
+          [set tr_ragelimit random 300]
+          ;; 20% of people don't even want to intend the bus
+          [set tr_ragelimit 0]
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_ns (tram_passengers_ns - 2)
+    ]
+  ]
+
+  ;; Old trams
+  if active-tram-ns != nobody and [t_type] of active-tram-ns = "old" [
+
+    ;; Door 1 (double door)
+    ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
+    if (tram_exists_ns = 1 and tram_passengers_ns >= 2)[
+      check-employees
+      create-tramriders 2 [
+        ;; Setting the cosmetics
+        set color yellow
+        set size 10
+        ;; Setting the position outside of the trams' door
+        setxy 807 168
+        ;; Setting the variables
+        ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
+        set tr_movement_status "going to bus stop"
+        ;; Calculation of the enterprise the tramrider is working at
+        ;; At first, a random value is calculated in order to assign the person in the following step
+        ;; 40 people are working at Enterprise A, 50 at Enterprise B, 350 at Enterprise C and 5 are included for the Boarding House
+        set tr_random_val random (445 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse))
+        ;; Depending of the result for the random value, one of the four possible destinations is chosen
+        if tr_random_val <= (40 - count_employees_enterprise_a) [set tr_ultimate_destination "enterprise a"]
+        if tr_random_val > (40 - count_employees_enterprise_a) and tr_random_val <= (90 - (count_employees_enterprise_a + count_employees_enterprise_b)) [set tr_ultimate_destination "enterprise b"]
+        if tr_random_val > (90 - (count_employees_enterprise_a + count_employees_enterprise_b)) and tr_random_val <= (440 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) [set tr_ultimate_destination "enterprise c"]
+        if tr_random_val > (440 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) and tr_random_val <= (445 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse)) [set tr_ultimate_destination "boarding house"]
+        ;; Since all tramriders intend to go to the bus stop, the current destination is set to the nearest bus stop, which is the bus stop at the tram
+        set tr_current_destination "bus_stop_tram"
+        ;; The first waypoint after leaving the tram for a tramrider coming from the city is the North Eastern Corner of the TZI
+        ;; The tramrider is facing the waypoint immediatly after leaving the tram
+        set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"]
+        face tr_target
+        ;; Setting the waiting time to 0
+        set tr_waiting_time 0
+        ;; Setting the ragelimt based on probability
+        ifelse random 100 > 20
+          ;; The Maximum waiting time for the bus is 5 Minutes
+          [set tr_ragelimit random 300]
+          ;; 20% of people don't even want to intend the bus
+          [set tr_ragelimit 0]
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_ns (tram_passengers_ns - 2)
+    ]
+
+    ;; Exceptional case: Since old trams only have double-doors, if one passenger is remaining in the tram, he also needs to get out
+    if (tram_exists_ns = 1 and tram_passengers_ns = 1)[
+      check-employees
+      create-tramriders 1 [
+        ;; Setting the cosmetics
+        set color yellow
+        set size 10
+        ;; Setting the position outside of the trams' door
+        setxy 807 168
+        ;; Setting the variables
+        ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
+        set tr_movement_status "going to bus stop"
+        ;; Calculation of the enterprise the tramrider is working at
+        ;; At first, a random value is calculated in order to assign the person in the following step
+        ;; 40 people are working at Enterprise A, 50 at Enterprise B, 350 at Enterprise C and 5 are included for the Boarding House
+        set tr_random_val random (445 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse))
+        ;; Depending of the result for the random value, one of the four possible destinations is chosen
+        if tr_random_val <= (40 - count_employees_enterprise_a) [set tr_ultimate_destination "enterprise a"]
+        if tr_random_val > (40 - count_employees_enterprise_a) and tr_random_val <= (90 - (count_employees_enterprise_a + count_employees_enterprise_b)) [set tr_ultimate_destination "enterprise b"]
+        if tr_random_val > (90 - (count_employees_enterprise_a + count_employees_enterprise_b)) and tr_random_val <= (440 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) [set tr_ultimate_destination "enterprise c"]
+        if tr_random_val > (440 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) and tr_random_val <= (445 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse)) [set tr_ultimate_destination "boarding house"]
+        ;; Since all tramriders intend to go to the bus stop, the current destination is set to the nearest bus stop, which is the bus stop at the tram
+        set tr_current_destination "bus_stop_tram"
+        ;; The first waypoint after leaving the tram for a tramrider coming from the city is the North Eastern Corner of the TZI
+        ;; The tramrider is facing the waypoint immediatly after leaving the tram
+        set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"]
+        face tr_target
+        ;; Setting the waiting time to 0
+        set tr_waiting_time 0
+        ;; Setting the ragelimt based on probability
+        ifelse random 100 > 20
+          ;; The Maximum waiting time for the bus is 5 Minutes
+          [set tr_ragelimit random 300]
+          ;; 20% of people don't even want to intend the bus
+          [set tr_ragelimit 0]
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_ns (tram_passengers_ns - 1)
+    ]
+  ]
+
+  ;; Direction: Stadtbergen
+  ;; Selecting the tram which is being active and going into the right direction for the spawning procedure
+  let active-tram-sn one-of trams with [t_direction = "sn" and t_status = "active"]
+
+  ;; New trams
+  if active-tram-sn != nobody and [t_type] of active-tram-sn = "new"  [
+
+    ;; Door 1 (single door)
+    ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
+    if (tram_exists_sn = 1 and tram_passengers_sn >= 1)[
+      check-employees
+      create-tramriders 1 [
+        ;; Setting the cosmetics
+        set color yellow
+        set size 10
+        ;; Setting the position outside of the trams' door
+        setxy 849 196
+        ;; Setting the variables
+        ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
+        set tr_movement_status "going to bus stop"
+        ;; Calculation of the enterprise the tramrider is working at
+        ;; At first, a random value is calculated in order to assign the person in the following step
+        ;; 40 people are working at Enterprise A, 50 at Enterprise B, 350 at Enterprise C and 5 are included for the Boarding House
+        set tr_random_val random (445 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse))
+        ;; Depending of the result for the random value, one of the four possible destinations is chosen
+        if tr_random_val <= (40 - count_employees_enterprise_a) [set tr_ultimate_destination "enterprise a"]
+        if tr_random_val > (40 - count_employees_enterprise_a) and tr_random_val <= (90 - (count_employees_enterprise_a + count_employees_enterprise_b)) [set tr_ultimate_destination "enterprise b"]
+        if tr_random_val > (90 - (count_employees_enterprise_a + count_employees_enterprise_b)) and tr_random_val <= (440 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) [set tr_ultimate_destination "enterprise c"]
+        if tr_random_val > (440 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) and tr_random_val <= (445 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse)) [set tr_ultimate_destination "boarding house"]
+        ;; Since all tramriders intend to go to the bus stop, the current destination is set to the nearest bus stop, which is the bus stop at the tram
+        set tr_current_destination "bus_stop_tram"
+        ;; The first waypoint after leaving the tram for a tramrider coming from the city is the North Eastern Corner of the TZI
+        ;; The tramrider is facing the waypoint immediatly after leaving the tram
+        set tr_target one-of tr_nodes with [tr_n_name = "sn tram crossing"]
+        face tr_target
+        ;; Setting the waiting time to 0
+        set tr_waiting_time 0
+        ;; Setting the ragelimt based on probability
+        ifelse random 100 > 20
+          ;; The Maximum waiting time for the bus is 5 Minutes
+          [set tr_ragelimit random 300]
+          ;; 20% of people don't even want to intend the bus
+          [set tr_ragelimit 0]
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_sn (tram_passengers_sn - 1)
+    ]
+
+    ;; Door 2 (double door)
+    ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
+    if (tram_exists_sn = 1 and tram_passengers_sn >= 2)[
+      check-employees
+      create-tramriders 2 [
+        ;; Setting the cosmetics
+        set color yellow
+        set size 10
+        ;; Setting the position outside of the trams' door
+        setxy 845 189
+        ;; Setting the variables
+        ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
+        set tr_movement_status "going to bus stop"
+        ;; Calculation of the enterprise the tramrider is working at
+        ;; At first, a random value is calculated in order to assign the person in the following step
+        ;; 40 people are working at Enterprise A, 50 at Enterprise B, 350 at Enterprise C and 5 are included for the Boarding House
+        set tr_random_val random (445 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse))
+        ;; Depending of the result for the random value, one of the four possible destinations is chosen
+        if tr_random_val <= (40 - count_employees_enterprise_a) [set tr_ultimate_destination "enterprise a"]
+        if tr_random_val > (40 - count_employees_enterprise_a) and tr_random_val <= (90 - (count_employees_enterprise_a + count_employees_enterprise_b)) [set tr_ultimate_destination "enterprise b"]
+        if tr_random_val > (90 - (count_employees_enterprise_a + count_employees_enterprise_b)) and tr_random_val <= (440 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) [set tr_ultimate_destination "enterprise c"]
+        if tr_random_val > (440 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) and tr_random_val <= (445 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse)) [set tr_ultimate_destination "boarding house"]
+        ;; Since all tramriders intend to go to the bus stop, the current destination is set to the nearest bus stop, which is the bus stop at the tram
+        set tr_current_destination "bus_stop_tram"
+        ;; The first waypoint after leaving the tram for a tramrider coming from the city is the North Eastern Corner of the TZI
+        ;; The tramrider is facing the waypoint immediatly after leaving the tram
+        set tr_target one-of tr_nodes with [tr_n_name = "sn tram crossing"]
+        face tr_target
+        ;; Setting the waiting time to 0
+        set tr_waiting_time 0
+        ;; Setting the ragelimt based on probability
+        ifelse random 100 > 20
+          ;; The Maximum waiting time for the bus is 5 Minutes
+          [set tr_ragelimit random 300]
+          ;; 20% of people don't even want to intend the bus
+          [set tr_ragelimit 0]
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_sn (tram_passengers_sn - 2)
+    ]
+  ]
+
+  ;; Old trams
+  if active-tram-sn != nobody and [t_type] of active-tram-sn = "old" [
+
+    ;; Door 1 (double door)
+    if (tram_exists_sn = 1 and tram_passengers_sn >= 2)[
+      check-employees
+      create-tramriders 2 [
+        ;; Setting the cosmetics
+        set color yellow
+        set size 10
+        ;; Setting the position outside of the trams' door
+        setxy 841 182
+        ;; Setting the variables
+        ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
+        set tr_movement_status "going to bus stop"
+        ;; Calculation of the enterprise the tramrider is working at
+        ;; At first, a random value is calculated in order to assign the person in the following step
+        ;; 40 people are working at Enterprise A, 50 at Enterprise B, 350 at Enterprise C and 5 are included for the Boarding House
+        set tr_random_val random (445 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse))
+        ;; Depending of the result for the random value, one of the four possible destinations is chosen
+        if tr_random_val <= (40 - count_employees_enterprise_a) [set tr_ultimate_destination "enterprise a"]
+        if tr_random_val > (40 - count_employees_enterprise_a) and tr_random_val <= (90 - (count_employees_enterprise_a + count_employees_enterprise_b)) [set tr_ultimate_destination "enterprise b"]
+        if tr_random_val > (90 - (count_employees_enterprise_a + count_employees_enterprise_b)) and tr_random_val <= (440 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) [set tr_ultimate_destination "enterprise c"]
+        if tr_random_val > (440 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) and tr_random_val <= (445 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse)) [set tr_ultimate_destination "boarding house"]
+        ;; Since all tramriders intend to go to the bus stop, the current destination is set to the nearest bus stop, which is the bus stop at the tram
+        set tr_current_destination "bus_stop_tram"
+        ;; The first waypoint after leaving the tram for a tramrider coming from the city is the North Eastern Corner of the TZI
+        ;; The tramrider is facing the waypoint immediatly after leaving the tram
+        set tr_target one-of tr_nodes with [tr_n_name = "sn tram crossing"]
+        face tr_target
+        ;; Setting the waiting time to 0
+        set tr_waiting_time 0
+        ;; Setting the ragelimt based on probability
+        ifelse random 100 > 20
+          ;; The Maximum waiting time for the bus is 5 Minutes
+          [set tr_ragelimit random 300]
+          ;; 20% of people don't even want to intend the bus
+          [set tr_ragelimit 0]
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_sn (tram_passengers_sn - 2)
+    ]
+
+    ;; If only 1 passenger remains
+    if (tram_exists_sn = 1 and tram_passengers_sn = 1)[
+      check-employees
+      create-tramriders 1 [
+        ;; Setting the cosmetics
+        set color yellow
+        set size 10
+        ;; Setting the position outside of the trams' door
+        setxy 841 182
+        ;; Setting the variables
+        ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
+        set tr_movement_status "going to bus stop"
+        ;; Calculation of the enterprise the tramrider is working at
+        ;; At first, a random value is calculated in order to assign the person in the following step
+        ;; 40 people are working at Enterprise A, 50 at Enterprise B, 350 at Enterprise C and 5 are included for the Boarding House
+        set tr_random_val random (445 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse))
+        ;; Depending of the result for the random value, one of the four possible destinations is chosen
+        if tr_random_val >= 1 and tr_random_val <= (40 - count_employees_enterprise_a) [set tr_ultimate_destination "enterprise a"]
+        if tr_random_val > (40 - count_employees_enterprise_a) and tr_random_val <= (90 - (count_employees_enterprise_a + count_employees_enterprise_b)) [set tr_ultimate_destination "enterprise b"]
+        if tr_random_val > (90 - (count_employees_enterprise_a + count_employees_enterprise_b)) and tr_random_val <= (440 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) [set tr_ultimate_destination "enterprise c"]
+        if tr_random_val > (440 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) and tr_random_val <= (445 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse)) [set tr_ultimate_destination "boarding house"]
+        ;; Since all tramriders intend to go to the bus stop, the current destination is set to the nearest bus stop, which is the bus stop at the tram
+        set tr_current_destination "bus_stop_tram"
+        ;; The first waypoint after leaving the tram for a tramrider coming from the city is the North Eastern Corner of the TZI
+        ;; The tramrider is facing the waypoint immediatly after leaving the tram
+        set tr_target one-of tr_nodes with [tr_n_name = "sn tram crossing"]
+        face tr_target
+        ;; Setting the waiting time to 0
+        set tr_waiting_time 0
+        ;; Setting the ragelimt based on probability
+        ifelse random 100 > 20
+          ;; The Maximum waiting time for the bus is 5 Minutes
+          [set tr_ragelimit random 300]
+          ;; 20% of people don't even want to intend the bus
+          [set tr_ragelimit 0]
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_sn (tram_passengers_sn - 1)
+    ]
+  ]
+end
+
+
+;; ===== TRAMRIDER IMPLEMENTATION =====
+
+to setup-tr_nodes
+  ;; Creating the waypoints for the tramriders movement around the map as agents
+  ;; setting an id, a name and the coordinates and hiding the node-agent
+  create-tr_nodes 1 [
+    set tr_n_id 1
+    set tr_n_name "TZI NE-Corner"
+    setxy 830 205
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 2
+    set tr_n_name "sn tram crossing"
+    setxy 852 200
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 3
+    set tr_n_name "tram entrance ns"
+    setxy 809 172
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 4
+    set tr_n_name "tram entrance ns"
+    setxy 830 162
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 7
+    set tr_n_name "bus_stop_tram"
+    setxy 812 208
+    hide-turtle
+  ]
+
+  ;; Route 1
+  create-tr_nodes 1 [
+    set tr_n_id 20
+    set tr_n_name "r1_waypoint1"
+    setxy 756 222
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 21
+    set tr_n_name "r1_waypoint2"
+    setxy 730 298
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 22
+    set tr_n_name "r1_waypoint3"
+    setxy 645 302
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 23
+    set tr_n_name "r1_waypoint4"
+    setxy 624 304
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 24
+    set tr_n_name "r1_waypoint5"
+    setxy 626 327
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 25
+    set tr_n_name "r1_waypoint6"
+    setxy 379 347
+    hide-turtle
+  ]
+
+  ;; Route 2
+  create-tr_nodes 1 [
+    set tr_n_id 30
+    set tr_n_name "r2_waypoint1"
+    setxy 638 221
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 31
+    set tr_n_name "r2_waypoint2"
+    setxy 618 223
+    hide-turtle
+  ]
+end
+
+to move-tramriders
+  ask tramriders [
+
+    ;; Waypoints of the tramriders' movement
+    ;; on the eastern side, between the bus_stop and the tram station
+    if distance tr_target = 0 and [tr_n_name] of tr_target = "TZI NE-Corner" and tr_current_destination = "bus_stop_tram"
+      [set tr_target one-of tr_nodes with [tr_n_name = "bus_stop_tram"]
+        face tr_target]
+
+    if distance tr_target = 0 and [tr_n_name] of tr_target = "sn tram crossing" and tr_current_destination = "bus_stop_tram"
+      [set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"]
+        face tr_target]
+
+
+    ;; Going to work by foot: Deciding which Route to take
+    ;; Chosing different routes with different probabilites based on different destinations
+    if tr_movement_status = "going to work" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_tram" [
+      ;; Calculating the deciding factor at random
+      set tr_random_val random 100
+
+      ;; Destination: Enterprise A
+      if tr_ultimate_destination = "enterprise a" [
+        ;; Random decision which path is chosen
+        if tr_random_val <= 50 [ ;; 50% chance for chosing the 1. route
+          set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint1"]
+          face tr_target
+        ]
+        if tr_random_val > 50 [ ;; 50% chance for chosing the 1. route
+          set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint1"]
+          face tr_target
+        ]
+      ]
+      ;; Destination: Enterprise B
+      if tr_ultimate_destination = "enterprise b" [
+        if tr_random_val <= 70 [ ;; 70% chance for chosing the 1. route
+          set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint1"]
+          face tr_target
+        ]
+        if tr_random_val > 30 [ ;; 30% chance for chosing the 1. route
+          set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint1"]
+          face tr_target
+        ]
+      ]
+      ;; Destination: Enterprise C
+      if tr_ultimate_destination = "enterprise c" [
+        if tr_random_val <= 70 [
+          set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint1"]
+          face tr_target
+        ]
+        if tr_random_val > 30 [
+          set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint1"]
+          face tr_target
+        ]
+      ]
+      ;; Destination: Boarding House
+      if tr_ultimate_destination = "boarding house" [
+        if tr_random_val <= 80 [
+          set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint1"]
+          face tr_target
+        ]
+        if tr_random_val > 20 [
+          set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint1"]
+          face tr_target
+        ]
+      ]
+    ]
+
+
+    ;; Route 1
+    if distance tr_target = 0 and [tr_n_name] of tr_target = "" and tr_current_destination = ""
+      [set tr_target one-of tr_nodes with [tr_n_name = ""]
+        face tr_target]
+
+    if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint1" and tr_movement_status = "going to work"
+      [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint2"]
+        face tr_target]
+
+    if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint2" and tr_movement_status = "going to work"
+      [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint3"]
+        face tr_target]
+
+    if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint3" and tr_movement_status = "going to work"
+      [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint4"]
+        face tr_target]
+
+    if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint4" and tr_movement_status = "going to work"
+      [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint5"]
+        face tr_target]
+
+    if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint5" and tr_movement_status = "going to work"
+      [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint6"]
+        face tr_target]
+
+    ;; Route 2
+    if distance tr_target = 0 and [tr_n_name] of tr_target = "r2_waypoint1" and tr_movement_status = "going to work"
+      [set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint2"]
+        face tr_target]
+
+    ;; Route 3
+
+
+
+    ;; Ragemode-Calculation
+    if tr_movement_status = "waiting"
+      [set tr_waiting_time (tr_waiting_time + 1)]
+
+    ;; Ending the waiting-on-the-bus process
+    ;; When the waiting time exceeds the ragelimit
+    if tr_movement_status = "waiting" and tr_waiting_time > tr_ragelimit [
+      ;; Set the destination to the location that should've been previously approached by using the bus
+      set tr_current_destination tr_ultimate_destination
+      ;; When the destination is one of the trams: go to the tram. Else: Go to work
+      ifelse tr_ultimate_destination = "tram_ns" or tr_ultimate_destination = "tram_sn"
+        [set tr_movement_status "going to tram"]
+        [set tr_movement_status "going to work"]
+    ]
+
+    ;; Starting the waiting-on-the-bus process
+    if tr_movement_status = "going to bus stop" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_tram"
+      [set tr_movement_status "waiting"]
+;;    or tr_movement_status = "going to bus stop" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_center"
+;;    or tr_movement_status = "going to bus stop" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_enterpriseC"
+;;    or tr_movement_status = "going to bus stop" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_bhouse"
+
+    ;; Collision
+    check-collision
+
+    ;; Moving towards the target
+    ;; once the distance is less than 1, use move-to to land exactly on the target.
+    if tr_stop = false and tr_movement_status != "waiting" [
+      ifelse distance tr_target < 1
+        [ move-to tr_target ]
+        [ fd 1.4 ] ;; 5km/h
+    ]
+
+    ;; Reset of the collision detection for next tick
+    set tr_stop false
+]
+end
+
+to check-collision
+      ;; Trams general
+    if any? trams-on patch-ahead 1
+      [set tr_stop true]
+
+    ;; Tram-crossing for sn tramdrivers wanting to leave the tram station
+    if tr_current_destination = "bus_stop_tram" and xcor = 852 and ycor = 200 [
+      if any? trams with [t_direction = "ns" and t_status ="arriving"]
+      or any? trams with [t_direction = "sn" and t_status = "closed"]
+      or any? trams with [t_direction = "sn" and t_status = "departing" and xcor < 875 and ycor < 255]
+        [set tr_stop true]
+    ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 7
@@ -592,6 +1581,50 @@ MONITOR
 155
 Time
 time
+17
+1
+11
+
+MONITOR
+1003
+350
+1190
+395
+count_employees_enterprise_a
+count_employees_enterprise_a
+17
+1
+11
+
+MONITOR
+1003
+396
+1190
+441
+NIL
+count_employees_enterprise_b
+17
+1
+11
+
+MONITOR
+1003
+442
+1190
+487
+NIL
+count_employees_enterprise_c
+17
+1
+11
+
+MONITOR
+1003
+489
+1190
+534
+NIL
+count_visitors_bhouse
 17
 1
 11
@@ -867,6 +1900,30 @@ Circle -16777216 true false 30 30 240
 Circle -7500403 true true 60 60 180
 Circle -16777216 true false 90 90 120
 Circle -7500403 true true 120 120 60
+
+tram_new
+true
+0
+Circle -11221820 true false 135 15 30
+Circle -11221820 true false 135 255 30
+Rectangle -7500403 true true 135 30 165 270
+Line -16777216 false 135 60 165 60
+Line -16777216 false 135 105 165 105
+Line -16777216 false 135 135 165 135
+Line -16777216 false 135 165 165 165
+Line -16777216 false 135 195 165 195
+Line -16777216 false 135 240 165 240
+Rectangle -1 false false 135 30 165 270
+
+tram_old
+true
+0
+Circle -11221820 true false 135 60 30
+Circle -11221820 true false 135 210 30
+Rectangle -7500403 true true 135 75 165 225
+Line -16777216 false 135 120 165 120
+Line -16777216 false 135 180 165 180
+Rectangle -1 false false 135 75 165 225
 
 tree
 false
