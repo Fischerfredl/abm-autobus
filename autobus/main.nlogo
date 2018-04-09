@@ -21,6 +21,8 @@ globals [
   count_employees_enterprise_b ;; all employees currently existing that are assigned to Enterprise B
   count_employees_enterprise_c ;; all employees currently existing that are assigned to Enterprise C
   count_visitors_bhouse ;; all employees currently existing that are assigned to the Boarding House
+
+  rand ;random number to spawn different pedestrians
 ]
 
 breed [busses bus] ;; agents, representing the autonomus bus
@@ -40,7 +42,6 @@ pedestrians-own[
   next-patchx
   next-patchy
   speed
-  arrived?
   crossing-street?
 ]
 
@@ -304,18 +305,68 @@ to setup-pedestrians
   ask pedestrians[die]
 end
 
+
+;;
+; spawn the different types of pedestrians
+; atm there are 4 types of pedestrians taking different routes
+;;
 to spawn-pedestrians
-  if (ticks mod 60 = 0) [
-    create-pedestrians 1 [
-      set arrived? false
-      set shape "person"
-      set color red
-      set xcor 307
-      set ycor 507
-      set goalx 373
-      set goaly 56
-      set size 10
-      facexy goalx goaly
+  ; spawn a pedestrian every 20 seconds/ticks
+  if (ticks mod 20 = 0) [
+    ; set a random number to spawn a random pedestrian-type
+    set rand random 4
+
+
+    if(rand = 0)[
+      create-pedestrians 1 [
+        set shape "person"
+        set color red
+        set xcor 307
+        set ycor 507
+        set goalx 373
+        set goaly 56
+        set size 10
+        facexy goalx goaly
+      ]
+    ]
+
+    if(rand = 1)[
+      create-pedestrians 1 [
+        set shape "person"
+        set color red
+        set xcor 285
+        set ycor 620
+        set goalx 390
+        set goaly 54
+        set size 10
+        facexy goalx goaly
+      ]
+    ]
+
+    if(rand = 2)[
+      create-pedestrians 1 [
+        set shape "person"
+        set color red
+        set xcor 15
+        set ycor 636
+        set goalx 267
+        set goaly 618
+        set size 10
+        facexy goalx goaly
+      ]
+    ]
+
+    if(rand = 3)[
+      create-pedestrians 1 [
+        set shape "person"
+        set color red
+        set xcor 20
+        set ycor 527
+        set goalx 390
+        set goaly 54
+        set size 10
+        facexy goalx goaly
+      ]
     ]
   ]
 end
@@ -324,10 +375,10 @@ end
 ; move the pedestrians on the map
 ;;
 to move-pedestrians
-  ;check if a steet has to be crossed
-  check-crossing
 
   ask pedestrians [
+    ;check if a steet has to be crossed
+    check-crossing
     ;die if the goal has been reached
     ifelse ([pxcor] of patch-here = goalx and [pycor] of patch-here = goaly)[
       die
@@ -345,22 +396,68 @@ to move-pedestrians
 end
 
 ;;
-; check if a pedestrian is standing at a street that can be crossed
+; pedestrians check if they are standing at a street that can be crossed
+; and set their target coordinates for the crossing of the street
 ;;
 to check-crossing
-  ask pedestrians [
-    if ([pxcor] of patch-here = 361 and [pycor] of patch-here = 354) [
-      set crossing-street? true
-      set crossingx 363
-      set crossingy 344
-    ]
 
-    if ([pxcor] of patch-here = 378 and [pycor] of patch-here = 256) [
-      set crossing-street? true
-      set crossingx 378
-      set crossingy 231
+  if ([pxcor] of patch-here = one-of [360 361] and [pycor] of patch-here = 354) [
+    set crossing-street? true
+    set crossingx 363
+    set crossingy 344
+  ]
+
+  if ([pxcor] of patch-here = 378 and [pycor] of patch-here = 256) [
+    set crossing-street? true
+    set crossingx 378
+    set crossingy 231
+  ]
+
+  if ([pxcor] of patch-here = 317 and [pycor] of patch-here = 527) [
+    set crossing-street? true
+    set crossingx 324
+    set crossingy 508
+  ]
+
+  if ([pxcor] of patch-here = 183 and [pycor] of patch-here = 537) [
+    set crossing-street? true
+    set crossingx 182
+    set crossingy 518
+  ]
+
+  if ([pxcor] of patch-here = one-of [23 24 25] and [pycor] of patch-here = one-of [381 382]) [
+    set crossing-street? true
+    set crossingx 25
+    set crossingy 369
+  ]
+
+  if ([pxcor] of patch-here = 159 and [pycor] of patch-here = 360) [
+    set crossing-street? true
+    set crossingx 162
+    set crossingy 360
+  ]
+
+  if ([pxcor] of patch-here = 162 and [pycor] of patch-here = 269) [
+    set crossing-street? true
+    set crossingx 177
+    set crossingy 269
+  ]
+
+  if ([pxcor] of patch-here = 373 and goalx != 373 and [pycor] of patch-here = 56 and goaly != 56) [
+    set crossing-street? true
+    set crossingx 389
+    set crossingy 56
+  ]
+
+  ;this one could be an old/drunk person who MAY remember how to get home, if not, they go around until they find their goal
+  if (([pxcor] of patch-here = 625 or [pxcor] of patch-here = 626 or [pxcor] of patch-here = 627) and [pycor] of patch-here = 330) [
+    if (random 5 < 3)[
+      set goalx 610
+      set goaly 114
     ]
   ]
+
+
 end
 
 
@@ -383,50 +480,76 @@ end
 ; READ THIS TO UNDERSTAND WTF IS GOING ON IN THIS FUNCTION
 ; check if the patch ahead is walking ground and walk if walkable
 ; otherwise check the patches left-and-ahead and right-and-ahead for walking ground and go there if walkable
-; otherwise check the patches left and right for walking ground and go ther if walkable
+; otherwise check the patches left and right for walking ground and go there if walkable
+; otherwise check the patches left-and-ahead and right-and-ahead behind them for walking ground and go there if walkable
 ; otherwise GET THE FUCK OUT OF HERE!
 ;;
 to walk-normally
-  ifelse ([pcolor] of patch-ahead 1 = white or [pcolor] of patch-ahead 1 = blue) [
+
+  ifelse ([pcolor] of patch-ahead 1.4 = white or [pcolor] of patch-ahead 1.4 = blue) [
     ;walk with 5 km/h
     fd 1.4
+
   ]
   [
     ifelse ([pcolor] of patch-left-and-ahead 45 1 = white or [pcolor] of patch-left-and-ahead 45 1 = blue) [
       set next-patchx ([pxcor] of patch-left-and-ahead 45 1)
       set next-patchy ([pycor] of patch-left-and-ahead 45 1)
       facexy next-patchx next-patchy
-      setxy next-patchx next-patchy
+      fd 1.4
     ]
     [
       ifelse ([pcolor] of patch-right-and-ahead 45 1 = white or [pcolor] of patch-right-and-ahead 45 1 = blue) [
         set next-patchx ([pxcor] of patch-right-and-ahead 45 1)
         set next-patchy ([pycor] of patch-right-and-ahead 45 1)
         facexy next-patchx next-patchy
-        setxy next-patchx next-patchy
+        fd 1.4
       ]
       [
-        ifelse ([pcolor] of patch-left-and-ahead 90 1 = white or [pcolor] of patch-left-and-ahead 45 1 = blue) [
-          set next-patchx ([pxcor] of patch-left-and-ahead 90 1)
-          set next-patchy ([pycor] of patch-left-and-ahead 90 1)
-          facexy next-patchx next-patchy
-          setxy next-patchx next-patchy
-        ]
-        [
-          ifelse ([pcolor] of patch-right-and-ahead 90 1 = white or [pcolor] of patch-right-and-ahead 90 1 = blue) [
+        ifelse ([pcolor] of patch-right-and-ahead 90 1 = white or [pcolor] of patch-right-and-ahead 90 1 = blue) [
             set next-patchx ([pxcor] of patch-right-and-ahead 90 1)
             set next-patchy ([pycor] of patch-right-and-ahead 90 1)
             facexy next-patchx next-patchy
-            setxy next-patchx next-patchy
+            ;;setxy next-patchx next-patchy
+            fd 1.4
+            facexy goalx goaly
+        ]
+        [
+          ifelse ([pcolor] of patch-left-and-ahead 90 1 = white or [pcolor] of patch-left-and-ahead 90 1 = blue) [
+            set next-patchx ([pxcor] of patch-left-and-ahead 90 1)
+            set next-patchy ([pycor] of patch-left-and-ahead 90 1)
+            facexy next-patchx next-patchy
+            fd 1.4
+            facexy goalx goaly
           ]
           [
-            ; GET THE FUCK OUT!
-            die
+            ifelse ([pcolor] of patch-left-and-ahead 135 1 = white or [pcolor] of patch-left-and-ahead 135 1 = blue) [
+              set next-patchx ([pxcor] of patch-left-and-ahead 135 1)
+              set next-patchy ([pycor] of patch-left-and-ahead 135 1)
+              facexy next-patchx next-patchy
+              fd 1.4
+              facexy goalx goaly
+            ]
+            [
+              ifelse ([pcolor] of patch-right-and-ahead 135 1 = white or [pcolor] of patch-right-and-ahead 135 1 = blue) [
+                set next-patchx ([pxcor] of patch-right-and-ahead 135 1)
+                set next-patchy ([pycor] of patch-right-and-ahead 135 1)
+                facexy next-patchx next-patchy
+                fd 1.4
+                facexy goalx goaly
+              ]
+              [
+                ; GET THE FUCK OUT!
+                die
+              ]
+            ]
           ]
         ]
       ]
     ]
   ]
+
+
 end
 
 
