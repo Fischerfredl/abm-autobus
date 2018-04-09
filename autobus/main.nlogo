@@ -81,6 +81,7 @@ trams-own[
 ]
 
 tramriders-own [
+  tr_home ;; Home of the tramrider (north or south)
   tr_movement_status ;; Going to Bus stop, waiting, going to work
   tr_ultimate_destination ;; Enterprise A,B,C or Tram
   tr_current_destination
@@ -89,6 +90,8 @@ tramriders-own [
   tr_ragelimit
   tr_stop
   tr_random_val
+  tr_max_working_time
+  tr_time_spent_working
 ]
 
 tr_nodes-own [
@@ -556,6 +559,13 @@ to check-schedule
       if (minutes = 13 or minutes = 28 or minutes = 0)[
         set tram_arrival_sn 1]
     ]
+    if hours = 1 [
+      if (minutes = 13 or minutes = 0)[ ; die komplette hour ist testweise, nachher wieder rauswerfen
+        set tram_arrival_ns 1]
+      if (minutes = 28 or minutes = 0)[
+        set tram_arrival_sn 1]
+    ]
+
     if hours = 4 [
       if (minutes = 47 or minutes = 58)[
         set tram_arrival_ns 1]
@@ -681,8 +691,8 @@ to check-times
   ask trams with [t_status = "active" or t_status = "closed"][set t_stop_duration (t_stop_duration + 1)] ;; Increasing by 1 every second
 
   ;; Calculating the standing time after the people wanting to get out left the tram
-  ask trams with [t_direction = "ns"][if tram_passengers_ns = 0 [set t_duration_after_empty (t_duration_after_empty + 1)]] ;; Increasing by 1 every second
-  ask trams with [t_direction = "sn"][if tram_passengers_sn = 0 [set t_duration_after_empty (t_duration_after_empty + 1)]] ;; Increasing by 1 every second
+  ask trams with [t_direction = "ns" and t_status != "arriving" and t_status != "departing"][if tram_passengers_ns = 0 [set t_duration_after_empty (t_duration_after_empty + 1)]] ;; Increasing by 1 every second
+  ask trams with [t_direction = "sn" and t_status != "arriving" and t_status != "departing"][if tram_passengers_sn = 0 [set t_duration_after_empty (t_duration_after_empty + 1)]] ;; Increasing by 1 every second
 
   ;; Departure of a tram once it surpassed all standing-duration-minimas
   ;; Direction: Haunstetten West
@@ -709,8 +719,8 @@ to board-people
       if tram_passengers_ns = 0 [ask n-of people-getting-in-tram-ns tramriders with [tr_current_destination = "tram_ns" and xcor = 809 and ycor = 172] [die]]
     ]
     ;; Locking the doors of the tram and starting the counter after everyone entered the tram
-    if tram_passengers_ns = 0 and people-getting-in-tram-ns = 0 and t_duration_after_boarding = 0 [set t_status "closed"]
-    if tram_passengers_ns = 0 and people-getting-in-tram-ns = 0 [set t_duration_after_boarding (t_duration_after_boarding + 1)]
+    if tram_passengers_ns = 0 and people-getting-in-tram-ns = 0 and t_duration_after_boarding = 0 and t_status = "active" [set t_status "closed"]
+    if tram_passengers_ns = 0 and people-getting-in-tram-ns = 0  and t_status != "arriving" and t_status != "departing" [set t_duration_after_boarding (t_duration_after_boarding + 1)]
   ]
   ;; Direction: Stadtbergen
   ask trams with [t_direction = "sn"][
@@ -724,8 +734,8 @@ to board-people
       if tram_passengers_sn = 0 [ask n-of people-getting-in-tram-sn tramriders with [tr_current_destination = "tram_sn" and xcor = 830 and ycor = 162] [die]]
     ]
     ;; Locking the doors of the tram and starting the counter after everyone entered the tram
-    if tram_passengers_sn = 0 and people-getting-in-tram-sn = 0 and t_duration_after_boarding = 0 [set t_status "closed"]
-    if tram_passengers_sn = 0 and people-getting-in-tram-sn = 0 [set t_duration_after_boarding (t_duration_after_boarding + 1)]
+    if tram_passengers_sn = 0 and people-getting-in-tram-sn = 0 and t_duration_after_boarding = 0 and t_status = "active" [set t_status "closed"]
+    if tram_passengers_sn = 0 and people-getting-in-tram-sn = 0  and t_status != "arriving" and t_status != "departing" [set t_duration_after_boarding (t_duration_after_boarding + 1)]
   ]
 end
 
@@ -756,7 +766,10 @@ to spawn-trams
       setxy 881 349
 
       ;; Calculating the number of passengers within the tram
-      set tram_passengers_ns floor(1 * 15 * random-float 1.5)
+      ;; <> !!! <> VORLÄUFIG (Bis zur Einigung) <> !!! <>: Tramriders can only be spawned when there is still space in one of the three enterprises
+      if count_employees_enterprise_a < 40 or count_employees_enterprise_b < 50 or count_employees_enterprise_c < 350 [
+        ;; The first number is the factor for the rushhour, the second one the factor for the tram and the third one a random factor
+        set tram_passengers_ns floor(1 * 15 * random-float 1.5)]
       ;; Limiting the possible amount of passengers within the trams based on its model, new or old
       if t_type = "new" [
         ;; There is an additional subdivision for new trams. 16 out of 68 newer trams have a maximum amount of passengers of 248. The other 52 have a maximum amount of passengers of 228.
@@ -797,7 +810,10 @@ to spawn-trams
       setxy 795 77
 
       ;; Calculating the number of passengers within the tram
-      set tram_passengers_sn floor(1 * 15 * random-float 1.5)
+      ;; <> !!! <> VORLÄUFIG (Bis zur Einigung) <> !!! <>: Tramriders can only be spawned when there is still space in one of the three enterprises
+      if count_employees_enterprise_a < 40 or count_employees_enterprise_b < 50 or count_employees_enterprise_c < 350 [
+        ;; The first number is the factor for the rushhour, the second one the factor for the tram and the third one a random factor
+        set tram_passengers_sn floor(1 * 15 * random-float 1.5)]
       ;; Limiting the possible amount of passengers within the trams based on its model, new or old
       if t_type = "new" [
         ;; There is an additional subdivision for new trams. 16 out of 68 newer trams have a maximum amount of passengers of 248. The other 52 have a maximum amount of passengers of 228.
@@ -883,6 +899,7 @@ end
 
 to trams-spawn-tramriders
   ;; Spawning tramriders
+
   ;; The spawning of the tramriders is subdivisioned by 1. the tram's direction, 2. the tram's model and 3. the tram's doors
 
   ;; Direction: Haunstetten West
@@ -903,6 +920,8 @@ to trams-spawn-tramriders
         ;; Setting the position outside of the trams' door
         setxy 800 156
         ;; Setting the variables
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "north"
         ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
         set tr_movement_status "going to bus stop"
         ;; Calculation of the enterprise the tramrider is working at
@@ -944,6 +963,8 @@ to trams-spawn-tramriders
         ;; Setting the position outside of the trams' door
         setxy 804 165
         ;; Setting the variables
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "north"
         ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
         set tr_movement_status "going to bus stop"
         ;; Calculation of the enterprise the tramrider is working at
@@ -989,6 +1010,8 @@ to trams-spawn-tramriders
         ;; Setting the position outside of the trams' door
         setxy 807 168
         ;; Setting the variables
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "north"
         ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
         set tr_movement_status "going to bus stop"
         ;; Calculation of the enterprise the tramrider is working at
@@ -1029,6 +1052,8 @@ to trams-spawn-tramriders
         ;; Setting the position outside of the trams' door
         setxy 807 168
         ;; Setting the variables
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "north"
         ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
         set tr_movement_status "going to bus stop"
         ;; Calculation of the enterprise the tramrider is working at
@@ -1078,6 +1103,8 @@ to trams-spawn-tramriders
         ;; Setting the position outside of the trams' door
         setxy 849 196
         ;; Setting the variables
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "south"
         ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
         set tr_movement_status "going to bus stop"
         ;; Calculation of the enterprise the tramrider is working at
@@ -1119,6 +1146,8 @@ to trams-spawn-tramriders
         ;; Setting the position outside of the trams' door
         setxy 845 189
         ;; Setting the variables
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "south"
         ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
         set tr_movement_status "going to bus stop"
         ;; Calculation of the enterprise the tramrider is working at
@@ -1163,6 +1192,8 @@ to trams-spawn-tramriders
         ;; Setting the position outside of the trams' door
         setxy 841 182
         ;; Setting the variables
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "south"
         ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
         set tr_movement_status "going to bus stop"
         ;; Calculation of the enterprise the tramrider is working at
@@ -1203,6 +1234,8 @@ to trams-spawn-tramriders
         ;; Setting the position outside of the trams' door
         setxy 841 182
         ;; Setting the variables
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "south"
         ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
         set tr_movement_status "going to bus stop"
         ;; Calculation of the enterprise the tramrider is working at
@@ -1239,7 +1272,7 @@ end
 ;; ===== TRAMRIDER IMPLEMENTATION =====
 
 to setup-tr_nodes
-  ;; Creating the waypoints for the tramriders movement around the map as agents
+  ;; Creating the waypoints for the tramriders' movement around the map as agents
   ;; setting an id, a name and the coordinates and hiding the node-agent
   create-tr_nodes 1 [
     set tr_n_id 1
@@ -1261,14 +1294,32 @@ to setup-tr_nodes
   ]
   create-tr_nodes 1 [
     set tr_n_id 4
-    set tr_n_name "tram entrance ns"
+    set tr_n_name "tram entrance sn"
     setxy 830 162
     hide-turtle
   ]
   create-tr_nodes 1 [
-    set tr_n_id 7
+    set tr_n_id 5
     set tr_n_name "bus_stop_tram"
     setxy 812 208
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 6
+    set tr_n_name "bus_stop_center"
+    setxy 411 347
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 7
+    set tr_n_name "bus_stop_enterpriseC"
+    setxy 175 385
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 8
+    set tr_n_name "bus_stop_bhouse"
+    setxy 173 517
     hide-turtle
   ]
 
@@ -1309,8 +1360,20 @@ to setup-tr_nodes
     setxy 379 347
     hide-turtle
   ]
+  create-tr_nodes 1 [
+    set tr_n_id 26
+    set tr_n_name "r1_waypoint7"
+    setxy 361 348
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 27
+    set tr_n_name "r1_waypoint8"
+    setxy 222 360
+    hide-turtle
+  ]
 
-  ;; Route 2
+    ;; Route 2
   create-tr_nodes 1 [
     set tr_n_id 30
     set tr_n_name "r2_waypoint1"
@@ -1323,138 +1386,202 @@ to setup-tr_nodes
     setxy 618 223
     hide-turtle
   ]
+  create-tr_nodes 1 [
+    set tr_n_id 32
+    set tr_n_name "r2_waypoint3"
+    setxy 466 234
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 33
+    set tr_n_name "r2_waypoint4"
+    setxy 451 131
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 34
+    set tr_n_name "r2_waypoint5"
+    setxy 420 133
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 35
+    set tr_n_name "r2_waypoint6"
+    setxy 391 115
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 36
+    set tr_n_name "r2_waypoint7"
+    setxy 375 116
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 37
+    set tr_n_name "r2_waypoint8"
+    setxy 377 230
+    hide-turtle
+  ]
+
+
+  ;; Interroute waypoints = Waypoints between the routes
+  create-tr_nodes 1 [
+    set tr_n_id 40
+    set tr_n_name "inter_r1r2_waypoint1"
+    setxy 375 288
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 41
+    set tr_n_name "inter_r1r2_waypoint2"
+    setxy 378 257
+    hide-turtle
+  ]
+
+  create-tr_nodes 1 [
+    set tr_n_id 42
+    set tr_n_name "inter_r1bh_waypoint1"
+    setxy 306 509
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 43
+    set tr_n_name "inter_r1bh_waypoint2"
+    setxy 240 514
+    hide-turtle
+  ]
+
+  ;; Interbuilding waypoints = waypoints between the enterprises' buildings
+  create-tr_nodes 1 [
+    set tr_n_id 51
+    set tr_n_name "interbuilding_waypoint1"
+    setxy 169 246
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 52
+    set tr_n_name "interbuilding_waypoint2"
+    setxy 170 270
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 53
+    set tr_n_name "interbuilding_waypoint3"
+    setxy 174 311
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 54
+    set tr_n_name "interbuilding_waypoint4"
+    setxy 176 361
+    hide-turtle
+  ]
+
+
+  ;; Enterprise Nodes
+   create-tr_nodes 1 [
+    set tr_n_id 61
+    set tr_n_name "entrance_enterprise_a"
+    setxy 256 239
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 62
+    set tr_n_name "building_enterprise_a"
+    setxy 252 213
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 63
+    set tr_n_name "entrance_enterprise_b"
+    setxy 180 311
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 64
+    set tr_n_name "building_enterprise_b"
+    setxy 273 302
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 65
+    set tr_n_name "entrance_enterprise_c"
+    setxy 164 311
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 66
+    set tr_n_name "building_enterprise_c"
+    setxy 110 315
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 67
+    set tr_n_name "entrance_boarding_house"
+    setxy 236 531
+    hide-turtle
+  ]
+  create-tr_nodes 1 [
+    set tr_n_id 68
+    set tr_n_name "building_boarding_house"
+    setxy 234 554
+    hide-turtle
+  ]
+
+
+
 end
 
 to move-tramriders
   ask tramriders [
+    ;; The following 3 functions define the tramrider's next waypoint once the current waypoint is reached
+    ;; Going to work
+    check-tramriders-waypoints-going-to-work
+    ;; Between the routes and the enterprises
+    check-tramriders-inter-and-enterprise-waypoints
+    ;; Going to tram
+    check-tramriders-waypoints-going-to-tram
 
-    ;; Waypoints of the tramriders' movement
-    ;; on the eastern side, between the bus_stop and the tram station
-    if distance tr_target = 0 and [tr_n_name] of tr_target = "TZI NE-Corner" and tr_current_destination = "bus_stop_tram"
-      [set tr_target one-of tr_nodes with [tr_n_name = "bus_stop_tram"]
-        face tr_target]
-
-    if distance tr_target = 0 and [tr_n_name] of tr_target = "sn tram crossing" and tr_current_destination = "bus_stop_tram"
-      [set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"]
-        face tr_target]
-
-
-    ;; Going to work by foot: Deciding which Route to take
-    ;; Chosing different routes with different probabilites based on different destinations
-    if tr_movement_status = "going to work" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_tram" [
-      ;; Calculating the deciding factor at random
-      set tr_random_val random 100
-
-      ;; Destination: Enterprise A
-      if tr_ultimate_destination = "enterprise a" [
-        ;; Random decision which path is chosen
-        if tr_random_val <= 50 [ ;; 50% chance for chosing the 1. route
-          set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint1"]
-          face tr_target
-        ]
-        if tr_random_val > 50 [ ;; 50% chance for chosing the 1. route
-          set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint1"]
-          face tr_target
-        ]
-      ]
-      ;; Destination: Enterprise B
-      if tr_ultimate_destination = "enterprise b" [
-        if tr_random_val <= 70 [ ;; 70% chance for chosing the 1. route
-          set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint1"]
-          face tr_target
-        ]
-        if tr_random_val > 30 [ ;; 30% chance for chosing the 1. route
-          set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint1"]
-          face tr_target
-        ]
-      ]
-      ;; Destination: Enterprise C
-      if tr_ultimate_destination = "enterprise c" [
-        if tr_random_val <= 70 [
-          set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint1"]
-          face tr_target
-        ]
-        if tr_random_val > 30 [
-          set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint1"]
-          face tr_target
-        ]
-      ]
-      ;; Destination: Boarding House
-      if tr_ultimate_destination = "boarding house" [
-        if tr_random_val <= 80 [
-          set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint1"]
-          face tr_target
-        ]
-        if tr_random_val > 20 [
-          set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint1"]
-          face tr_target
-        ]
-      ]
-    ]
-
-
-    ;; Route 1
-    if distance tr_target = 0 and [tr_n_name] of tr_target = "" and tr_current_destination = ""
-      [set tr_target one-of tr_nodes with [tr_n_name = ""]
-        face tr_target]
-
-    if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint1" and tr_movement_status = "going to work"
-      [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint2"]
-        face tr_target]
-
-    if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint2" and tr_movement_status = "going to work"
-      [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint3"]
-        face tr_target]
-
-    if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint3" and tr_movement_status = "going to work"
-      [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint4"]
-        face tr_target]
-
-    if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint4" and tr_movement_status = "going to work"
-      [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint5"]
-        face tr_target]
-
-    if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint5" and tr_movement_status = "going to work"
-      [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint6"]
-        face tr_target]
-
-    ;; Route 2
-    if distance tr_target = 0 and [tr_n_name] of tr_target = "r2_waypoint1" and tr_movement_status = "going to work"
-      [set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint2"]
-        face tr_target]
-
-    ;; Route 3
-
-
+    ;; The tramriders are working when they reach their Enterprise
+    tramriders-work
 
     ;; Ragemode-Calculation
+    ;; Increasing the time waiting for the bus by one each second
     if tr_movement_status = "waiting"
       [set tr_waiting_time (tr_waiting_time + 1)]
 
     ;; Ending the waiting-on-the-bus process
-    ;; When the waiting time exceeds the ragelimit
+    ;; When the waiting time exceeds the ragelimit, the tramrider decides to go to this destination by foot
     if tr_movement_status = "waiting" and tr_waiting_time > tr_ragelimit [
       ;; Set the destination to the location that should've been previously approached by using the bus
       set tr_current_destination tr_ultimate_destination
       ;; When the destination is one of the trams: go to the tram. Else: Go to work
       ifelse tr_ultimate_destination = "tram_ns" or tr_ultimate_destination = "tram_sn"
-        [set tr_movement_status "going to tram"]
-        [set tr_movement_status "going to work"]
+        [set tr_movement_status "going to tram"
+         set tr_waiting_time 0]
+        [set tr_movement_status "going to work"
+         set tr_waiting_time 0]
     ]
 
+
     ;; Starting the waiting-on-the-bus process
+    ;; When a tramrider reaches the bus stop he wanted to go to, his status is turned to "waiting"
     if tr_movement_status = "going to bus stop" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_tram"
       [set tr_movement_status "waiting"]
-;;    or tr_movement_status = "going to bus stop" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_center"
-;;    or tr_movement_status = "going to bus stop" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_enterpriseC"
-;;    or tr_movement_status = "going to bus stop" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_bhouse"
+    if tr_movement_status = "going to bus stop" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_center"
+      [set tr_movement_status "waiting"]
+    if tr_movement_status = "going to bus stop" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_enterpriseC"
+      [set tr_movement_status "waiting"]
+    if tr_movement_status = "going to bus stop" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_bhouse"
+      [set tr_movement_status "waiting"]
 
-    ;; Collision
+    ;; Check the possible collisions in order to control the moving process
     check-collision
 
     ;; Moving towards the target
     ;; once the distance is less than 1, use move-to to land exactly on the target.
-    if tr_stop = false and tr_movement_status != "waiting" [
+    ;; The tramrider is not allowed to move when he is waiting for the bus or working at his workplace
+    if tr_stop = false and tr_movement_status != "waiting" and tr_movement_status != "working" [
       ifelse distance tr_target < 1
         [ move-to tr_target ]
         [ fd 1.4 ] ;; 5km/h
@@ -1465,18 +1592,497 @@ to move-tramriders
 ]
 end
 
-to check-collision
-      ;; Trams general
-    if any? trams-on patch-ahead 1
-      [set tr_stop true]
 
-    ;; Tram-crossing for sn tramdrivers wanting to leave the tram station
-    if tr_current_destination = "bus_stop_tram" and xcor = 852 and ycor = 200 [
-      if any? trams with [t_direction = "ns" and t_status ="arriving"]
-      or any? trams with [t_direction = "sn" and t_status = "closed"]
-      or any? trams with [t_direction = "sn" and t_status = "departing" and xcor < 875 and ycor < 255]
-        [set tr_stop true]
+
+to check-tramriders-waypoints-going-to-work
+
+  ;; Waypoints of the tramriders' movement
+
+  ;; on the eastern side, between the bus_stop and the tram station
+
+  ;; If the distance to the target is 0 and the tramrider has a certain destination => recalculate the target to the next waypoint and face it
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "TZI NE-Corner" and tr_current_destination = "bus_stop_tram"
+    [set tr_target one-of tr_nodes with [tr_n_name = "bus_stop_tram"]
+      face tr_target]
+
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "sn tram crossing" and tr_current_destination = "bus_stop_tram"
+    [set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"]
+      face tr_target]
+
+
+  ;; Going to work by foot: Deciding which Route to take
+  ;; Chosing different routes with different probabilites based on different destinations
+  if tr_movement_status = "going to work" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_tram" [
+    ;; Calculating the deciding factor at random
+    set tr_random_val random 100
+    ;; Destination: Enterprise A
+    if tr_ultimate_destination = "enterprise a" [
+      ;; Random decision which path is chosen
+      if tr_random_val <= 50 [ ;; 50% chance for chosing the 1. route
+        set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint1"]
+        face tr_target
+      ]
+      if tr_random_val > 50 [ ;; 50% chance for chosing the 1. route
+        set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint1"]
+        face tr_target
+      ]
     ]
+    ;; Destination: Enterprise B
+    if tr_ultimate_destination = "enterprise b" [
+      if tr_random_val <= 70 [ ;; 70% chance for chosing the 1. route
+        set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint1"]
+        face tr_target
+      ]
+      if tr_random_val > 70 [ ;; 30% chance for chosing the 1. route
+        set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint1"]
+        face tr_target
+      ]
+    ]
+    ;; Destination: Enterprise C
+    if tr_ultimate_destination = "enterprise c" [
+      if tr_random_val <= 70 [
+        set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint1"]
+        face tr_target
+      ]
+      if tr_random_val > 70 [
+        set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint1"]
+        face tr_target
+      ]
+    ]
+    ;; Destination: Boarding House
+    if tr_ultimate_destination = "boarding house" [
+      if tr_random_val <= 80 [
+        set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint1"]
+        face tr_target
+      ]
+      if tr_random_val > 80 [
+        set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint1"]
+        face tr_target
+      ]
+    ]
+  ]
+
+
+  ;; Route 1
+  ;; The northern route, going through the pedestrian precinct
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "" and tr_current_destination = ""
+    [set tr_target one-of tr_nodes with [tr_n_name = ""]
+      face tr_target]
+
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint1" and tr_movement_status = "going to work"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint2"]
+      face tr_target]
+
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint2" and tr_movement_status = "going to work"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint3"]
+      face tr_target]
+
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint3" and tr_movement_status = "going to work"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint4"]
+      face tr_target]
+
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint4" and tr_movement_status = "going to work"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint5"]
+      face tr_target]
+
+  ;; The route goes past the central bus stop
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint5" and tr_movement_status = "going to work"
+    [set tr_target one-of tr_nodes with [tr_n_name = "bus_stop_center"]
+      face tr_target]
+
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_center" and tr_movement_status = "going to work"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint6"]
+      face tr_target]
+
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint6" and tr_movement_status = "going to work"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint7"]
+      face tr_target]
+
+  ;; Decision on Route 1, right after crossing the Forschungsallee, between Enterprise B+C and Enterprise A and the Boarding house
+  ;; If the destination is Enterprise A: Turn south
+  ;; If the destination is Enterprise B or Enterprise C: Stay on route 1, go straight forward
+  ;; If the destination is the Boarding House: Turn north
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint7" and tr_movement_status = "going to work" [
+    if tr_ultimate_destination = "enterprise a" [
+      set tr_target one-of tr_nodes with [tr_n_name = "inter_r1r2_waypoint1"]
+      face tr_target]
+    if tr_ultimate_destination = "enterprise b"
+      [set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint4"]
+      face tr_target]
+    if tr_ultimate_destination = "enterprise c"
+      [set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint4"]
+      face tr_target]
+    if tr_ultimate_destination = "boarding house"
+      [set tr_target one-of tr_nodes with [tr_n_name = "inter_r1bh_waypoint1"]
+      face tr_target]
+  ]
+
+
+
+  ;; Route 2
+  ;; The southern of the routes
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r2_waypoint1" and tr_movement_status = "going to work"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint2"]
+      face tr_target]
+
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r2_waypoint2" and tr_movement_status = "going to work"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint3"]
+      face tr_target]
+
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r2_waypoint3" and tr_movement_status = "going to work"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint4"]
+      face tr_target]
+
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r2_waypoint4" and tr_movement_status = "going to work"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint5"]
+      face tr_target]
+
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r2_waypoint5" and tr_movement_status = "going to work"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint6"]
+      face tr_target]
+
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r2_waypoint6" and tr_movement_status = "going to work"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint7"]
+      face tr_target]
+
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r2_waypoint7" and tr_movement_status = "going to work"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint8"]
+      face tr_target]
+
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r2_waypoint8" and tr_movement_status = "going to work"
+    [set tr_target one-of tr_nodes with [tr_n_name = "entrance_enterprise_a"]
+      face tr_target]
+
+  ;; The route goes past the entrance to Enterprise A
+  ;; If the tramrider is an employee of Enterprise A he should turn to the building. Else he should go straight on the boardwalk in order to reach the area between the buildings
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "entrance_enterprise_a" and tr_movement_status = "going to work" [
+    ifelse tr_ultimate_destination = "enterprise a"
+      [set tr_target one-of tr_nodes with [tr_n_name = "building_enterprise_a"]
+          face tr_target]
+      [set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint1"]
+        face tr_target]
+  ]
+
+  ;; Route 3
+
+
+
+  ;; Route at the Boarding House
+
+
+  ;; From route 1 to boarding house
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "inter_r1bh_waypoint1" and tr_movement_status = "going to work"
+    [set tr_target one-of tr_nodes with [tr_n_name = "inter_r1bh_waypoint2"]
+      face tr_target]
+
+  ;; If the person at the opposite side of the street at the boarding house wants to go inside of the boarding house, cross the street. Else, go to the Bus Stop.
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "inter_r1bh_waypoint2" and tr_movement_status = "going to work" [
+    ifelse  tr_ultimate_destination = "boarding house"
+      [set tr_target one-of tr_nodes with [tr_n_name = "entrance_boarding_house"]
+        face tr_target]
+      [set tr_target one-of tr_nodes with [tr_n_name = "bus_stop_bhouse"]
+        face tr_target]
+  ]
+  ;; People who are at the entrance of the boarding house always want to go inside
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "entrance_boarding_house" and tr_movement_status = "going to work"
+      [set tr_target one-of tr_nodes with [tr_n_name = "building_boarding_house"]
+        face tr_target]
+
+end
+
+
+to check-tramriders-inter-and-enterprise-waypoints
+
+  ;; Going to work
+  ;; Inter-Route waypoints
+  ;; Employees of Enterprise A that chose to go along the Route 1 took a turn south after crossing the Forschungsallee.
+  ;; These are the waypoints between Route 1 and Route 2 at the Forschungsallee
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "inter_r1r2_waypoint1" and tr_movement_status = "going to work" and tr_ultimate_destination = "enterprise a"
+    [set tr_target one-of tr_nodes with [tr_n_name = "inter_r1r2_waypoint2"]
+      face tr_target]
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "inter_r1r2_waypoint2" and tr_movement_status = "going to work" and tr_ultimate_destination = "enterprise a"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint8"]
+      face tr_target]
+
+
+  ;; Inter-Building waypoints
+  ;; These waypoints define the movement between the 3 Enterprises
+
+  ;; Decision between employees of Enterprises A and the rest
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "interbuilding_waypoint1" and tr_movement_status = "going to work" [
+    ifelse tr_ultimate_destination != "enterprise a"
+      [set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint2"]
+        face tr_target]
+      [set tr_target one-of tr_nodes with [tr_n_name = "entrance_enterprise_a"]
+        face tr_target]
+  ]
+
+  ;; Decision between employees of Enterprises A and the rest
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "interbuilding_waypoint2" and tr_movement_status = "going to work" [
+    ifelse tr_ultimate_destination != "enterprise a"
+      [set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint3"]
+        face tr_target]
+      [set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint1"]
+        face tr_target]
+  ]
+
+  ;; Decision between visitors of the Boarding House and the rest
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "interbuilding_waypoint4" and tr_movement_status = "going to work" and tr_ultimate_destination != "boarding house"
+    [set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint3"]
+      face tr_target]
+
+  ;; Interbuilding Waypoint 3 is directly between Enterprise B and C.
+  ;; Employees of Enterprise A: Go south
+  ;; Employees of Enterprise B: Go to the entrance of Enterprise B
+  ;; Employees of Enterprise C: Go to the entrance of Enterprise C
+  ;; Visitor of the Boarding House: Go north
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "interbuilding_waypoint3" and tr_movement_status = "going to work" [
+    if tr_ultimate_destination = "enterprise a" [
+      set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint2"]
+      face tr_target]
+    if tr_ultimate_destination = "enterprise b"
+      [set tr_target one-of tr_nodes with [tr_n_name = "entrance_enterprise_b"]
+      face tr_target]
+    if tr_ultimate_destination = "enterprise c"
+      [set tr_target one-of tr_nodes with [tr_n_name = "entrance_enterprise_c"]
+        face tr_target]
+    if tr_ultimate_destination = "boarding house"
+      [set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint4"]
+      face tr_target]
+  ]
+
+  ;; Enterprise Waypoints
+  ;; These are the waypoints of the Enterprises for the employees
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "entrance_enterprise_b" and tr_movement_status = "going to work" [
+    ifelse tr_ultimate_destination = "enterprise b"
+      [set tr_target one-of tr_nodes with [tr_n_name = "building_enterprise_b"]
+        face tr_target]
+      [set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint3"]
+        face tr_target]
+  ]
+
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "entrance_enterprise_c" and tr_movement_status = "going to work" [
+    ifelse tr_ultimate_destination = "enterprise c"
+      [set tr_target one-of tr_nodes with [tr_n_name = "building_enterprise_c"]
+        face tr_target]
+      [set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint3"]
+        face tr_target]
+  ]
+
+
+end
+
+to check-tramriders-waypoints-going-to-tram
+
+  ;; Going to tram
+
+
+  ;; Leaving the buildings
+  if [tr_n_name] of tr_target = "building_enterprise_a" and distance tr_target = 0 and tr_movement_status = "going to bus stop"
+    [set tr_target one-of tr_nodes with [tr_n_name = "entrance_enterprise_a"]
+       face tr_target]
+  if [tr_n_name] of tr_target = "entrance_enterprise_a" and distance tr_target = 0 and tr_movement_status = "going to bus stop"
+    [if tr_current_destination = "bus_stop_enterpriseC"
+      [set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint1"]
+        face tr_target ]
+     if tr_current_destination = "bus_stop_center"
+      [set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint8"]
+        face tr_target ]
+      ]
+
+  if [tr_n_name] of tr_target = "building_enterprise_b" and distance tr_target = 0 and tr_movement_status = "going to bus stop"
+    [set tr_target one-of tr_nodes with [tr_n_name = "entrance_enterprise_b"]
+       face tr_target]
+  if [tr_n_name] of tr_target = "entrance_enterprise_b" and distance tr_target = 0 and tr_movement_status = "going to bus stop"
+    [set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint4"]
+       face tr_target]
+
+  if [tr_n_name] of tr_target = "building_enterprise_c" and distance tr_target = 0 and tr_movement_status = "going to bus stop"
+    [set tr_target one-of tr_nodes with [tr_n_name = "entrance_enterprise_c"]
+       face tr_target]
+  if [tr_n_name] of tr_target = "entrance_enterprise_c" and distance tr_target = 0 and tr_movement_status = "going to bus stop"
+    [set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint4"]
+       face tr_target]
+
+
+
+  ;; going to bus stop
+
+
+  ;; Bus Stop Enterprise C
+  if [tr_n_name] of tr_target = "interbuilding_waypoint1" and distance tr_target = 0 and tr_movement_status = "going to bus stop"
+    [set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint2"]
+       face tr_target]
+
+  if [tr_n_name] of tr_target = "interbuilding_waypoint2" and distance tr_target = 0 and tr_movement_status = "going to bus stop"
+    [set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint4"]
+       face tr_target]
+
+  if [tr_n_name] of tr_target = "interbuilding_waypoint4" and distance tr_target = 0 and tr_movement_status = "going to bus stop"
+    [set tr_target one-of tr_nodes with [tr_n_name = "bus_stop_enterpriseC"]
+       face tr_target]
+
+  ;; Bus Stop Center
+
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r2_waypoint8" and tr_movement_status = "going to bus stop"
+      [set tr_target one-of tr_nodes with [tr_n_name = "inter_r1r2_waypoint2"]
+        face tr_target]
+    if distance tr_target = 0 and [tr_n_name] of tr_target = "inter_r1r2_waypoint2" and tr_movement_status = "going to bus stop"
+      [set tr_target one-of tr_nodes with [tr_n_name = "inter_r1r2_waypoint1"]
+        face tr_target]
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "inter_r1r2_waypoint1" and tr_movement_status = "going to bus stop"
+      [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint7"]
+        face tr_target]
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint7" and tr_movement_status = "going to bus stop"
+      [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint6"]
+        face tr_target]
+  if distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint6" and tr_movement_status = "going to bus stop"
+      [set tr_target one-of tr_nodes with [tr_n_name = "bus_stop_center"]
+        face tr_target]
+
+
+  ;; going to tram by foot
+  ;; Route 1
+  if tr_movement_status = "going to tram" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_enterpriseC"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint8"]
+        face tr_target]
+  if tr_movement_status = "going to tram" and distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint8"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint7"]
+        face tr_target]
+  if tr_movement_status = "going to tram" and distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint7"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint6"]
+        face tr_target]
+  if tr_movement_status = "going to tram" and distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint6"
+    [set tr_target one-of tr_nodes with [tr_n_name = "bus_stop_center"]
+        face tr_target]
+  if tr_movement_status = "going to tram" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_center"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint5"]
+        face tr_target]
+  if tr_movement_status = "going to tram" and distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint5"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint4"]
+        face tr_target]
+  if tr_movement_status = "going to tram" and distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint4"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint3"]
+        face tr_target]
+  if tr_movement_status = "going to tram" and distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint3"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint2"]
+        face tr_target]
+  if tr_movement_status = "going to tram" and distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint2"
+    [set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint1"]
+        face tr_target]
+  if tr_movement_status = "going to tram" and distance tr_target = 0 and [tr_n_name] of tr_target = "r1_waypoint1"
+    [set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"]
+        face tr_target]
+
+
+  ;; The tram station
+  if tr_movement_status = "going to tram" and distance tr_target = 0 and [tr_n_name] of tr_target = "TZI NE-Corner" [
+    ifelse tr_current_destination = "tram_ns"
+      [set tr_target one-of tr_nodes with [tr_n_name = "tram entrance ns"]
+        face tr_target]
+      [set tr_target one-of tr_nodes with [tr_n_name = "sn tram crossing"]
+        face tr_target]
+  ]
+  if tr_movement_status = "going to tram" and distance tr_target = 0 and [tr_n_name] of tr_target = "sn tram crossing"
+    [set tr_target one-of tr_nodes with [tr_n_name = "tram entrance sn"]
+        face tr_target]
+end
+
+
+to tramriders-work
+
+  ;; Start working
+  ;; If the Employees are on the position of a Building, the start working
+  ;; The Tramrider is hidden visually because he is inside the building
+  ;; The Working time is calculated randomly
+  ;; The status of movement is set to "working"
+  ;; Enterprise A
+  if [tr_n_name] of tr_target = "building_enterprise_a" and distance tr_target = 0 and tr_movement_status = "going to work" [
+    hide-turtle
+    set tr_max_working_time random 60 ;; Angestellte arbeiten bis zu 1 Minute täglich
+    set tr_movement_status "working"
+  ]
+  ;; Enterprise B
+  if [tr_n_name] of tr_target = "building_enterprise_b" and distance tr_target = 0 and tr_movement_status = "going to work" [
+    hide-turtle
+    set tr_max_working_time random 60 ;; Angestellte arbeiten bis zu 1 Minute täglich
+    set tr_movement_status "working"
+  ]
+  ;; Enterprise C
+  if [tr_n_name] of tr_target = "building_enterprise_c" and distance tr_target = 0 and tr_movement_status = "going to work" [
+    hide-turtle
+    set tr_max_working_time random 60 ;; Angestellte arbeiten bis zu 1 Minute täglich
+    set tr_movement_status "working"
+  ]
+
+  ;; Working
+  ;; While a tramrider is working, the time he spent working is increased by 1 every second
+  if tr_movement_status = "working" [
+    set tr_time_spent_working (tr_time_spent_working + 1)
+  ]
+
+  ;; Finish working
+  ;; Only possible for people who are working
+  if tr_movement_status = "working" [
+    ;; When the time, the employee spent working, reaches his maximum working time, the employee finishes working
+    if tr_time_spent_working >= tr_max_working_time [
+      ;; Since the tramrider intends to take the bus, the movement is set to going to bus stop
+      set tr_movement_status "going to bus stop"
+      ;; Almost every employee wants to go the the Busstop between the Enterprises, right next to Enterprise C
+      set tr_current_destination "bus_stop_enterpriseC"
+      ;; Only people working at Enterprise A may decide between the bus stop at the enterprises and the busstop next to the Forschungsallee
+      if xcor = 252 and ycor = 213 [ ;;Coordinates of Enterprise A
+        ;; Calculate a random value for that decision
+        set tr_random_val random 100
+        ;; 50% Chance of taking either one of the bus stops
+        ifelse tr_random_val > 50
+          [set tr_current_destination "bus_stop_enterpriseC"]
+          [set tr_current_destination "bus_stop_center"]
+      ]
+
+      ;; Which tram to take?
+      ;; The destination, which tram the tramrider wants to take, is based on the direction of his arrival
+      ;; If he came from the direction of the city / Stadtbergen, he will take the tram back there
+      if tr_home = "north" [set tr_ultimate_destination "tram_sn"]
+      ;; If he came from the direction of Haunstetten , he will take the tram back there
+      if tr_home = "south" [set tr_ultimate_destination "tram_ns"]
+
+      ;; The tramriders that finished working are colored black to decide between them and the ones going to work
+      set color black
+      ;; Since the tramrider was hidden when starting to work, now the tramrider has to be made visible again
+      show-turtle
+    ]
+  ]
+
+;;  Stored since tram: tr_home ;; Home of the tramrider (north or south)
+;;  Reassigned after work: tr_movement_status ;; Going to Bus stop, waiting, going to work
+;;  Reassigned after work: tr_ultimate_destination ;; Enterprise A,B,C or Tram
+;;  Reassigned after work: tr_current_destination
+;;  Reassigned after work, leaving the building: tr_target
+;;  Reset after stopping to wait for the tram: tr_waiting_time
+;;  Stored since tram: tr_ragelimit
+;;  Reset every tick: tr_stop
+;;  Recalculated at various points: tr_random_val
+;;  Not changed after work: tr_max_working_time
+;;  Not changed after work: tr_time_spent_working
+
+
+end
+
+
+
+to check-collision
+  ;; Trams general
+  if any? trams-on patch-ahead 1
+    [set tr_stop true]
+
+  ;; Tram-crossing for sn tramdrivers wanting to leave the tram station
+  if tr_current_destination = "bus_stop_tram" and xcor = 852 and ycor = 200 [
+    if any? trams with [t_direction = "ns" and t_status ="arriving"]
+    or any? trams with [t_direction = "sn" and t_status = "closed"]
+    or any? trams with [t_direction = "sn" and t_status = "departing" and xcor < 875 and ycor < 255]
+      [set tr_stop true]
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -1625,6 +2231,17 @@ MONITOR
 534
 NIL
 count_visitors_bhouse
+17
+1
+11
+
+MONITOR
+1056
+212
+1233
+257
+tramriders waiting for ns tram
+tramriders with [tr_current_destination = \"tram_ns\" and xcor = 809 and ycor = 172]
 17
 1
 11
