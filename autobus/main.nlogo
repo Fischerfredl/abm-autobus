@@ -23,7 +23,8 @@ globals [
   count_employees_enterprise_c ;; all employees currently existing that are assigned to Enterprise C
   count_visitors_bhouse ;; all employees currently existing that are assigned to the Boarding House
 
-  rand ;random number to spawn different pedestrians
+  distance_to_pedestrian ;distance of a bus stop to a pedestrian
+  rand_pedestrian ;random number to spawn different pedestrians
 ]
 
 breed [busses bus] ;; agents, representing the autonomus bus
@@ -36,14 +37,17 @@ breed [tr_nodes tr_node] ;; tr_nodes are agents representing the waypoints of th
 
 ;; attributes of pedestrians
 pedestrians-own[
+  pedestrian_type
   goalx
   goaly
   crossingx
   crossingy
   next-patchx
   next-patchy
-  speed
   crossing-street?
+  movement-status
+  exit_bus_stop
+  waiting-time
 ]
 
 patches-own [
@@ -215,6 +219,7 @@ end
 to go
   update-time
   if hours >= 22 [
+    ask turtles [ die ]
     stop
   ]
   ;; if time is between 5:30 and 21:00 and bus must drive due to schedule
@@ -326,11 +331,12 @@ to spawn-pedestrians
   ; spawn a pedestrian every 20 seconds/ticks
   if (ticks mod 20 = 0) [
     ; set a random number to spawn a random pedestrian-type
-    set rand random 4
+    set rand_pedestrian random 6
 
 
-    if(rand = 0)[
+    if(rand_pedestrian = 0)[
       create-pedestrians 1 [
+        set pedestrian_type "no_bus"
         set shape "person"
         set color red
         set xcor 307
@@ -338,12 +344,14 @@ to spawn-pedestrians
         set goalx 373
         set goaly 56
         set size 10
+        set waiting-time 0
         facexy goalx goaly
       ]
     ]
 
-    if(rand = 1)[
+    if(rand_pedestrian = 1)[
       create-pedestrians 1 [
+        set pedestrian_type "bus_to_tram"
         set shape "person"
         set color red
         set xcor 285
@@ -351,12 +359,15 @@ to spawn-pedestrians
         set goalx 390
         set goaly 54
         set size 10
+        set waiting-time one-of [120 240 480 600]
+        set exit_bus_stop "bus_stop_tram"
         facexy goalx goaly
       ]
     ]
 
-    if(rand = 2)[
+    if(rand_pedestrian = 2)[
       create-pedestrians 1 [
+        set pedestrian_type "no_bus"
         set shape "person"
         set color red
         set xcor 15
@@ -364,12 +375,14 @@ to spawn-pedestrians
         set goalx 267
         set goaly 618
         set size 10
+        set waiting-time 0
         facexy goalx goaly
       ]
     ]
 
-    if(rand = 3)[
+    if(rand_pedestrian = 3)[
       create-pedestrians 1 [
+        set pedestrian_type "bus_to_center"
         set shape "person"
         set color red
         set xcor 20
@@ -377,6 +390,38 @@ to spawn-pedestrians
         set goalx 390
         set goaly 54
         set size 10
+        set waiting-time one-of [120 240 480 600]
+        set exit_bus_stop "bus_stop_center"
+        facexy goalx goaly
+      ]
+    ]
+
+    if(rand_pedestrian = 4)[
+      create-pedestrians 1 [
+        set pedestrian_type "no_bus"
+        set shape "person"
+        set color red
+        set xcor 285
+        set ycor 620
+        set goalx 390
+        set goaly 54
+        set size 10
+        set waiting-time 0
+        facexy goalx goaly
+      ]
+    ]
+
+    if(rand_pedestrian = 5)[
+      create-pedestrians 1 [
+        set pedestrian_type "no_bus"
+        set shape "person"
+        set color red
+        set xcor 20
+        set ycor 527
+        set goalx 390
+        set goaly 54
+        set size 10
+        set waiting-time 0
         facexy goalx goaly
       ]
     ]
@@ -389,19 +434,43 @@ end
 to move-pedestrians
 
   ask pedestrians [
-    ;check if a steet has to be crossed
-    check-crossing
-    ;die if the goal has been reached
-    ifelse ([pxcor] of patch-here = goalx and [pycor] of patch-here = goaly)[
-      die
+
+    ;if movement-status is "waiting", wait
+    ifelse (movement-status = "waiting") [
+      pedestrian-wait
     ]
     [
-      ;cross the street if crossing-street? is true or walk normally otherwise
-      ifelse (crossing-street? = true) [
-        cross-street
-      ]
-      [
-        walk-normally
+      ;pedestrians can only move if they are visible ( = not on bus)
+      if (hidden? = false) [
+        ;check if a steet has to be crossed
+        check-crossing
+        ;die if the goal has been reached
+        ifelse ([pxcor] of patch-here = goalx and [pycor] of patch-here = goaly)[
+          die
+        ]
+        [
+          ;cross the street if crossing-street? is true or walk normally otherwise
+          ifelse (crossing-street? = true) [
+            cross-street
+          ]
+          [
+            ;get the distance to the nearest busstop and temporarily save it in distance_to_pedestrian
+            ask (min-one-of nodes with [busstop? = true] [distance myself]) [
+              set distance_to_pedestrian distance myself
+            ]
+
+            ;check if the nearest bus stop is less than 25 away
+            ;also check if the pedestrian wants to take the bus
+            ;also check if the pedestrian is willing to wait for the bus or has given up
+            ;if true, walk to the nearest bus stop
+            ;if false, walk on normally
+            ifelse (distance_to_pedestrian < 25 and pedestrian_type != "no_bus" and movement-status != "no_more_waiting") [
+              walk-to-bus-stop
+            ][
+              walk-normally
+            ]
+          ]
+        ]
       ]
     ]
   ]
@@ -469,7 +538,6 @@ to check-crossing
     ]
   ]
 
-
 end
 
 
@@ -486,10 +554,12 @@ to cross-street
     facexy crossingx crossingy
     fd 1
   ]
+
 end
 
 ;;
 ; READ THIS TO UNDERSTAND WTF IS GOING ON IN THIS FUNCTION
+; definition of walking ground: boardwalk or misc = 11 or misc = 4
 ; check if the patch ahead is walking ground and walk if walkable
 ; otherwise check the patches left-and-ahead and right-and-ahead for walking ground and go there if walkable
 ; otherwise check the patches left and right for walking ground and go there if walkable
@@ -561,8 +631,37 @@ to walk-normally
     ]
   ]
 
-
 end
+
+;;
+; walk to the bus stop
+;;
+to walk-to-bus-stop
+  ifelse (distance_to_pedestrian < 2)[
+    ;move to the nearest node that is a bus stop
+    move-to min-one-of nodes with [busstop? = true] [distance myself]
+    set movement-status "waiting"
+  ]
+  [
+    face min-one-of nodes with [busstop? = true] [distance myself]
+    fd 1.4
+  ]
+end
+
+;;
+; if the waiting time is > 0, decrement it (simulates a second of waiting), give up otherwise
+;;
+to pedestrian-wait
+  ifelse (waiting-time > 0) [
+    ;decrement waiting time
+    set waiting-time waiting-time - 1
+  ]
+  [
+    ;pedestrian gives up waiting and decides to walk
+    set movement-status "no_more_waiting"
+  ]
+end
+
 
 
 ;; ===== BUS IMPLEMENTATION =====
@@ -640,7 +739,7 @@ to setup-bustrack
     set hidden? false ;; hide, because nodes are just locigal elements
     set shape "circle"
     set size 15
-    set color red
+    set color violet
   ]
 
   let counter 0
