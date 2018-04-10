@@ -2,6 +2,7 @@ globals [
   seconds
   hours
   minutes
+  total_minutes
   time
   routeTB
   routeBT
@@ -114,6 +115,7 @@ to setup
   set hours 0
   set minutes 0
   set seconds 0
+  set time ""
   setup-bus
   setup-schedule
   setup-bikers
@@ -184,8 +186,12 @@ end
 ;; updates globals "time", "hours" and "minutes"
 to update-time
   set seconds ticks mod 60
+  set total_minutes (floor(ticks / 60)) + 300
+  if total_minutes = 1440 [
+    set total_minutes 0
+  ]
   set minutes (floor(ticks / 60)) mod 60
-  set hours (floor(ticks / 3600)) mod 24
+  set hours ((floor(ticks / 3600)) mod 24) + 5
   let min_str ""
   let hr_str ""
   ifelse minutes < 10 [
@@ -206,7 +212,8 @@ end
 ;; main function
 to go
   update-time
-  if member? time schedule [
+  ;; if time is between 5:30 and 21:00 and bus must drive due to schedule
+  if (total_minutes >= 330) and (total_minutes <= 1260) and (member? time schedule) [
     ask busses [
       set status "driving"
     ]
@@ -554,15 +561,21 @@ end
 
 
 ;; ===== BUS IMPLEMENTATION =====
-
+;; reads the bus schedule from one of the txt-files depending on which interval the user chose
 to setup-schedule
-  set schedule ["00:15" "02:15" "03:15" "04:15" "05:15"] ;; just for testing
+  file-open (word "schedules/" interval "min.txt")
+  if not (file-at-end?) [
+    set schedule file-read
+  ]
+  file-close
 end
 
+;; creates the bus instance and sets its initial parameter values
 to setup-bus
   setup-bustrack
   create-busses 1 [
     set shape "autobus"
+    set color white
     setxy 797 215
     set heading 0
     set size 30
@@ -573,6 +586,7 @@ to setup-bus
   ]
 end
 
+;; checks if the bus can drive and moves it with 12km/h (ca 3m/s)
 to busDrive
   ask busses [
     if status = "driving" and canDrive? = true [
@@ -2368,6 +2382,26 @@ tramriders with [tr_current_destination = \"tram_ns\" and xcor = 809 and ycor = 
 17
 1
 11
+
+CHOOSER
+520
+113
+658
+158
+interval
+interval
+10 15 20
+0
+
+TEXTBOX
+521
+48
+671
+104
+Bus is going between 5:30 and 21:00. You can choose the interval between the bus rides (in minutes).
+11
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
