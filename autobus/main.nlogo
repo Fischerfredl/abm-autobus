@@ -721,6 +721,8 @@ to board-people
     ;; Locking the doors of the tram and starting the counter after everyone entered the tram
     if tram_passengers_ns = 0 and people-getting-in-tram-ns = 0 and t_duration_after_boarding = 0 and t_status = "active" [set t_status "closed"]
     if tram_passengers_ns = 0 and people-getting-in-tram-ns = 0  and t_status != "arriving" and t_status != "departing" [set t_duration_after_boarding (t_duration_after_boarding + 1)]
+    ;; The Tram also has to be able to drive away after the doors are closed, even if there are new people arriving at the station
+    if tram_passengers_ns = 0 and people-getting-in-tram-ns > 0 and t_status = "closed" [set t_duration_after_boarding (t_duration_after_boarding + 1)]
   ]
   ;; Direction: Stadtbergen
   ask trams with [t_direction = "sn"][
@@ -736,6 +738,8 @@ to board-people
     ;; Locking the doors of the tram and starting the counter after everyone entered the tram
     if tram_passengers_sn = 0 and people-getting-in-tram-sn = 0 and t_duration_after_boarding = 0 and t_status = "active" [set t_status "closed"]
     if tram_passengers_sn = 0 and people-getting-in-tram-sn = 0  and t_status != "arriving" and t_status != "departing" [set t_duration_after_boarding (t_duration_after_boarding + 1)]
+    ;; The Tram also has to be able to drive away after the doors are closed, even if there are new people arriving at the station
+    if tram_passengers_sn = 0 and people-getting-in-tram-sn > 0 and t_status = "closed" [set t_duration_after_boarding (t_duration_after_boarding + 1)]
   ]
 end
 
