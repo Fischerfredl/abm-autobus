@@ -191,7 +191,7 @@ to update-time
     set total_minutes 0
   ]
   set minutes (floor(ticks / 60)) mod 60
-  set hours ((floor(ticks / 3600)) mod 24) + 5
+  set hours ((floor(ticks / 3600)) + 5) mod 24
   let min_str ""
   let hr_str ""
   ifelse minutes < 10 [
@@ -212,6 +212,9 @@ end
 ;; main function
 to go
   update-time
+  if hours >= 22 [
+    stop
+  ]
   ;; if time is between 5:30 and 21:00 and bus must drive due to schedule
   if (total_minutes >= 330) and (total_minutes <= 1260) and (member? time schedule) [
     ask busses [
