@@ -635,7 +635,10 @@ end
 to setup-bustrack
   let coords [172 517 166 384 165 365 415 346 733 320 723 216 797 208] ;; xy-coords of the nodes
   create-nodes 7 [
-    set hidden? true ;; hide, because nodes are just locigal elements
+    set hidden? false ;; hide, because nodes are just locigal elements
+    set shape "circle"
+    set size 15
+    set color red
   ]
 
   let counter 0
