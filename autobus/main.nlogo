@@ -27,13 +27,14 @@ globals [
   rand_pedestrian ;random number to spawn different pedestrians
 ]
 
-breed [busses bus] ;; agents, representing the autonomus bus
+;; ordering of breed represents drawing order on map; breeds declared later overlap those declared earlier
 breed [nodes node] ;; nodes are agents representing the stops and turning points of the route the bus drives along
 breed [bikers biker]
 breed [pedestrians pedestrian] ;; breed pedestrians
 breed [trams tram] ;; agents representing the trams
 breed [tramriders tramrider] ;; agents representing the tramriders
 breed [tr_nodes tr_node] ;; tr_nodes are agents representing the waypoints of the routes of the tramriders
+breed [busses bus] ;; agents, representing the autonomus bus
 
 ;; attributes of pedestrians
 pedestrians-own[
@@ -61,9 +62,8 @@ busses-own [
   status      ;; information about the current state of this agent ("driving", "waiting")
   route       ;; list containing the nodes which represents the current route of the bus; either from boarding house to TZI or vice versa
   passengers  ;; list containing agents which are currently on the bus
-  full?       ;; true if 12 passengers are onboard
-  canDrive?   ;; true if no obstacles (pedestrians, cars, etc) prevent the bus from driving
-  ticks-since-here
+  waited      ;; seconds/ticks since bus stopped for boarding
+  toWait      ;; seconds/ticks that bus has to wait according to number of passenger getting on/off the bus
 ]
 
 nodes-own [
@@ -222,16 +222,7 @@ to go
     ask turtles [ die ]
     stop
   ]
-  ;; if time is between 5:30 and 21:00 and bus must drive due to schedule
-  if (total_minutes >= 330) and (total_minutes <= 1260) and (member? time schedule) [
-    ask busses [
-      set status "driving"
-    ]
-  ]
-  if ([status] of one-of busses) = "driving" [
-    busDrive
-  ]
-
+  process-bus
   process-bikers
   spawn-pedestrians
   move-pedestrians
@@ -664,6 +655,11 @@ end
 
 
 
+
+
+
+
+
 ;; ===== BUS IMPLEMENTATION =====
 ;; reads the bus schedule from one of the txt-files depending on which interval the user chose
 to setup-schedule
@@ -681,96 +677,37 @@ to setup-bus
     set shape "autobus"
     set color white
     setxy 797 215
-    set heading 0
-    set size 30
+    set size 20
     set target node 5
-    set ticks-since-here 0
-    set canDrive? true
     set route routeTB
-  ]
-end
-
-;; checks if the bus can drive and moves it with 12km/h (ca 3m/s)
-to busDrive
-  ask busses [
-    if status = "driving" and canDrive? = true [
-      ifelse distance target <= 3 [
-        face target
-        move-to target
-        set route remove-item 0 route
-        ifelse length route != 0 [
-          set target item 0 route
-        ]
-        [
-          set status "waiting"
-          ifelse [name] of target = "stop_tram" [
-            set route routeTB
-          ]
-          [
-            set route routeBT
-          ]
-        ]
-        ]
-        [
-          face target
-          fd 3
-        ]
-    ]
-  ]
-end
-
-;; bus idles for ten ticks
-to busWait
-  ask busses [
-    ifelse ticks-since-here < 10 [
-      set ticks-since-here ticks-since-here + 1
-    ]
-    [
-      set ticks-since-here 0
-      set status "driving"
-    ]
   ]
 end
 
 ;; sets up the nodes which enable the bus to move along the route
 to setup-bustrack
-  let coords [172 517 166 384 165 365 415 346 733 320 723 216 797 208] ;; xy-coords of the nodes
+  let coords [[172 517] [166 384] [165 365] [415 346] [733 320] [723 216] [797 208]] ;; xy-coords of the nodes
+  let names ["stop_bhouse" "stop_enterpriseC" "turn_1" "stop_center" "turn_2" "turn_3" "stop_tram"] ;; names of the nodes
   create-nodes 7 [
     set hidden? false ;; hide, because nodes are just locigal elements
     set shape "circle"
     set size 15
     set color violet
   ]
-
-  let counter 0
+  ;; read data from lists above and set agent-variables respectively
   foreach sort nodes [ p ->
     ask p [
-    if counter = 0 [setxy (item 0 coords) (item 1 coords)
-                    set busstop? true
-                    set name "stop_bhouse"] ;; bus stop at the boarding house
-    if counter = 1 [setxy (item 2 coords) (item 3 coords)
-                    set busstop? true
-                    set name "stop_enterpriseC"] ;; bus stop at enterprise C
-    if counter = 2 [setxy (item 4 coords) (item 5 coords)
-                    set busstop? false
-                    set name "turn_1"
-                    set hidden? true] ;; first turn on the route from boarding house to tram station TZI
-    if counter = 3 [setxy (item 6 coords) (item 7 coords)
-                    set busstop? true
-                    set name "stop_center"] ;; bus stop at road "Forschungsallee"
-    if counter = 4 [setxy (item 8 coords) (item 9 coords)
-                    set busstop? false
-                    set name "turn_2"
-                    set hidden? true] ;; second turn on the route from boarding house to tram station TZI
-    if counter = 5 [setxy (item 10 coords) (item 11 coords)
-                    set busstop? false
-                    set name "turn_3"
-                    set hidden? true] ;; third turn on the route from boarding house to tram station TZI
-    if counter = 6 [setxy (item 12 coords) (item 13 coords)
-                    set busstop? true
-                    set name "stop_tram"] ;; bus stop at the tram station TZI
+      setxy (item 0 (item 0 coords)) (item 1 (item 0 coords))
+      set name item 0 names
+      ifelse member? "stop" name [
+        set busstop? true
+      ]
+      [
+        set busstop? false
+      ]
+      ;; remove first item from list so next iteration uses new data
+      set coords remove-item 0 coords
+      set names remove-item 0 names
     ]
-    set counter counter + 1
   ]
 
   ;; set up the two routes by placing the nodes in the respective order in a global list
@@ -785,12 +722,80 @@ to setup-bustrack
   set routeBT replace-item 5 routeBT (one-of nodes with [name = "turn_3"])
   set routeBT replace-item 6 routeBT (one-of nodes with [name = "stop_tram"])
   ;; with routeBT complete setting up routeTB becomes easier
-  set counter 6
+  let counter 6
   foreach routeBT [ x ->
     set routeTB replace-item counter routeTB x
     set counter counter - 1
   ]
 end
+
+;; executed each tick in go-function; determines status of bus and calls functions respectively
+to process-bus
+  ;; if time is between 5:30 and 21:00 and bus must drive due to schedule
+  if (total_minutes >= 330) and (total_minutes <= 1260) and (member? time schedule) [
+    ask busses [
+      set status "driving"
+    ]
+  ]
+  if ([status] of one-of busses) = "driving" [
+    busDrive
+  ]
+  if ([status] of one-of busses) = "boarding" [
+    busBoard
+  ]
+end
+
+;; bus behaviour while status is "driving"
+to busDrive
+  ask busses [
+    if status = "driving" [                         ;; check if bus has to drive at first
+      ifelse distance target <= 3 [                 ;; check if bus is near a node and - if yes - move it to this node
+        face target
+        move-to target
+        set route remove-item 0 route               ;; remove reached node from current route
+        ifelse length route != 0 [                  ;; check if reached node is not the last node of the route (final destination)
+          if [busstop?] of target = true [          ;; check if reached node is a busstop
+            set status "boarding"                   ;; if so, set status to "boarding"
+          ]
+          set target item 0 route                   ;; in either case (node is busstop or not) set target to the next node of the route
+        ]
+        [                                           ;; if reached node is the last of the route
+          set status "waiting"                      ;; set status to "waiting"
+          ifelse [name] of target = "stop_tram" [   ;; and check which route has to be set as next route (reverse of the route which was just finished)
+            set route routeTB
+          ]
+          [
+            set route routeBT
+          ]
+        ]
+        ]
+        [                                           ;; if bus is not near a node, just move it with 12 km/h (3 m/s) towards the next node (target)
+          face target
+          fd 3
+        ]
+    ]
+  ]
+end
+
+;; bus behaviour while status is "boarding"
+to busBoard
+  ask busses [
+    if status = "boarding" [
+      ifelse waited < 10 [       ;; 10 mit toWait ersetzen und toWait anhand der Anzahl ein-/aussteigender Personen berechnen
+        set waited waited + 1
+      ]
+      [
+        set waited 0
+        set status "driving"
+      ]
+    ]
+  ]
+end
+
+
+
+
+
 
 
 
