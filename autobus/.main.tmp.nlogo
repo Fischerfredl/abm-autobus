@@ -159,7 +159,7 @@ to setup-patches
 
   ;; color patches
   ask patches [
-    if (misc = 5) or (misc = 10) or (misc = 1) or (misc = 2)[ ;; dark_green, green_area, abschnitt, bauflaeche
+    if (misc = 5) or (misc = 10) or (misc = 12) or (misc = 1) or (misc = 2)[ ;; dark_green, green_area, schraffur, abschnitt, bauflaeche
       set pcolor green
     ]
     if (misc = 6) or (misc = 7) or (misc = 8) or (misc = 9)[ ;; enterprises
@@ -171,7 +171,7 @@ to setup-patches
     if misc = 3 [ ;; bhouse
       set pcolor yellow
     ]
-    if (misc = 11) or (misc = 4) or (misc = 12) [ ;; no_car, bus_line, schraffur
+    if (misc = 11) or (misc = 4) [ ;; no_car, bus_line,
       set pcolor blue
     ]
     if street = 1 [ ;; street
