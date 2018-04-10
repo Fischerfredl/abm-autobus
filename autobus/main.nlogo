@@ -652,16 +652,19 @@ to setup-bustrack
                     set name "stop_enterpriseC"] ;; bus stop at enterprise C
     if counter = 2 [setxy (item 4 coords) (item 5 coords)
                     set busstop? false
-                    set name "turn_1"] ;; first turn on the route from boarding house to tram station TZI
+                    set name "turn_1"
+                    set hidden? true] ;; first turn on the route from boarding house to tram station TZI
     if counter = 3 [setxy (item 6 coords) (item 7 coords)
                     set busstop? true
                     set name "stop_center"] ;; bus stop at road "Forschungsallee"
     if counter = 4 [setxy (item 8 coords) (item 9 coords)
                     set busstop? false
-                    set name "turn_2"] ;; second turn on the route from boarding house to tram station TZI
+                    set name "turn_2"
+                    set hidden? true] ;; second turn on the route from boarding house to tram station TZI
     if counter = 5 [setxy (item 10 coords) (item 11 coords)
                     set busstop? false
-                    set name "turn_3"] ;; third turn on the route from boarding house to tram station TZI
+                    set name "turn_3"
+                    set hidden? true] ;; third turn on the route from boarding house to tram station TZI
     if counter = 6 [setxy (item 12 coords) (item 13 coords)
                     set busstop? true
                     set name "stop_tram"] ;; bus stop at the tram station TZI
