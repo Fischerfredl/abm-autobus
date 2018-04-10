@@ -177,6 +177,7 @@ to setup-patches
     ]
     if street = 1 [ ;; street
       set pcolor gray
+      set misc 999
     ]
     if boardwalk = 1 [ ;; boardwalk
       set pcolor white
@@ -412,13 +413,13 @@ end
 ;;
 to check-crossing
 
-  if ([pxcor] of patch-here = one-of [360 361] and [pycor] of patch-here = 354) [
+  if (([pxcor] of patch-here = 360 or [pxcor] of patch-here = 361) and [pycor] of patch-here = 354) [
     set crossing-street? true
     set crossingx 363
     set crossingy 344
   ]
 
-  if ([pxcor] of patch-here = 378 and [pycor] of patch-here = 256) [
+  if (([pxcor] of patch-here = 378 or [pxcor] of patch-here = 379) and ([pycor] of patch-here = 256 or [pycor] of patch-here = 257)) [
     set crossing-street? true
     set crossingx 378
     set crossingy 231
@@ -497,27 +498,27 @@ end
 ;;
 to walk-normally
 
-  ifelse ([pcolor] of patch-ahead 1.4 = white or [pcolor] of patch-ahead 1.4 = blue) [
+  ifelse ([boardwalk] of patch-ahead 1.4 = 1 or [misc] of patch-ahead 1.4 = 11 or [misc] of patch-ahead 1.4 = 4) [
     ;walk with 5 km/h
     fd 1.4
 
   ]
   [
-    ifelse ([pcolor] of patch-left-and-ahead 45 1 = white or [pcolor] of patch-left-and-ahead 45 1 = blue) [
+    ifelse ([boardwalk] of patch-left-and-ahead 45 1 = 1 or [misc] of patch-left-and-ahead 45 1 = 11 or [misc] of patch-left-and-ahead 45 1 = 4) [
       set next-patchx ([pxcor] of patch-left-and-ahead 45 1)
       set next-patchy ([pycor] of patch-left-and-ahead 45 1)
       facexy next-patchx next-patchy
       fd 1.4
     ]
     [
-      ifelse ([pcolor] of patch-right-and-ahead 45 1 = white or [pcolor] of patch-right-and-ahead 45 1 = blue) [
+      ifelse ([boardwalk] of patch-right-and-ahead 45 1 = 1 or [misc] of patch-right-and-ahead 45 1 = 11 or [misc] of patch-right-and-ahead 45 1 = 4) [
         set next-patchx ([pxcor] of patch-right-and-ahead 45 1)
         set next-patchy ([pycor] of patch-right-and-ahead 45 1)
         facexy next-patchx next-patchy
         fd 1.4
       ]
       [
-        ifelse ([pcolor] of patch-right-and-ahead 90 1 = white or [pcolor] of patch-right-and-ahead 90 1 = blue) [
+        ifelse ([boardwalk] of patch-right-and-ahead 90 1 = 1 or [misc] of patch-right-and-ahead 90 1 = 11 or [misc] of patch-right-and-ahead 90 1 = 4) [
             set next-patchx ([pxcor] of patch-right-and-ahead 90 1)
             set next-patchy ([pycor] of patch-right-and-ahead 90 1)
             facexy next-patchx next-patchy
@@ -526,7 +527,7 @@ to walk-normally
             facexy goalx goaly
         ]
         [
-          ifelse ([pcolor] of patch-left-and-ahead 90 1 = white or [pcolor] of patch-left-and-ahead 90 1 = blue) [
+          ifelse ([boardwalk] of patch-left-and-ahead 90 1 = 1 or [misc] of patch-left-and-ahead 90 1 = 11 or [misc] of patch-left-and-ahead 90 1 = 4) [
             set next-patchx ([pxcor] of patch-left-and-ahead 90 1)
             set next-patchy ([pycor] of patch-left-and-ahead 90 1)
             facexy next-patchx next-patchy
@@ -534,7 +535,7 @@ to walk-normally
             facexy goalx goaly
           ]
           [
-            ifelse ([pcolor] of patch-left-and-ahead 135 1 = white or [pcolor] of patch-left-and-ahead 135 1 = blue) [
+            ifelse ([boardwalk] of patch-left-and-ahead 135 1 = 1 or [misc] of patch-left-and-ahead 135 1 = 11 or [misc] of patch-left-and-ahead 135 1 = 4) [
               set next-patchx ([pxcor] of patch-left-and-ahead 135 1)
               set next-patchy ([pycor] of patch-left-and-ahead 135 1)
               facexy next-patchx next-patchy
@@ -542,7 +543,7 @@ to walk-normally
               facexy goalx goaly
             ]
             [
-              ifelse ([pcolor] of patch-right-and-ahead 135 1 = white or [pcolor] of patch-right-and-ahead 135 1 = blue) [
+              ifelse ([boardwalk] of patch-right-and-ahead 135 1 = 1 or [misc] of patch-right-and-ahead 135 1 = 11 or [misc] of patch-right-and-ahead 135 1 = 4) [
                 set next-patchx ([pxcor] of patch-right-and-ahead 135 1)
                 set next-patchy ([pycor] of patch-right-and-ahead 135 1)
                 facexy next-patchx next-patchy
