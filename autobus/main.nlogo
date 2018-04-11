@@ -781,7 +781,7 @@ end
 to busBoard
   ask busses [
     ifelse BTcalced? = false [
-      calcBoardingTime
+      boardPassengers
     ]
     [ ;; only execute when boardingTime (toWait) is calculated
       ifelse waited < toWait [   ;; if boarding is not yet finished
@@ -812,8 +812,10 @@ to busBoard
   ]
 end
 
+;; executed once at each busstop
 ;; calculates the time necessary for boarding (depending on how many passengers get on/off the bus)
-to calcBoardingTime
+;; interacts with passengers so they board/exit the bus
+to boardPassengers
   let boardingTime 0
   let currentStop [target] of self
   let waitingPatch patch-at 0 0
@@ -845,6 +847,11 @@ to calcBoardingTime
     ]
   ]
 
+
+  ;; obviously code doesnt enter where boardingTime is increased --> check out
+
+
+
   ;; check the passenger agentset of the bus for passengers willig to get off the bus at the current stop
   if [passengers] of self != nobody [
     set passengersHopOff ([passengers] of self) with [exit_bus_stop = ([name] of currentStop)]
@@ -854,9 +861,9 @@ to calcBoardingTime
   if passengersHopOff != nobody [
     set boardingTime boardingTime + ((count passengersHopOff) * 1.5)
   ]
-  show passengersHopOff
-  show passengersHopOn
-  show remainingNodesOnRoute
+  show (word "passengers to hop off " passengersHopOff)
+  show (word "passengers to hop on " passengersHopOn)
+  show (word "boarding time " boardingTime)
   set toWait boardingTime ;; set toWait variable so bus waites for this amount of time
   set BTcalced? true      ;; set BTcalced? to true so it's not calculated again
 end
