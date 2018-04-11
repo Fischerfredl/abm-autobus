@@ -89,7 +89,7 @@ trams-own[
 
 tramriders-own [
   tr_home ;; Describes in which direction the home of the tramrider is located. Possible states: "north", "south"
-  movement_status ;; Describes the current movement of the tramrider. Possible states: "going to bus stop", "waiting for bus", "going to work", "working", "exiting bus"
+  movement_status ;; Describes the current movement of the tramrider. Possible states: "going to bus stop", "waiting_for_bus", "going to work", "working", "exiting bus"
   tr_ultimate_destination ;; Describes the ultimate destination the tramrider wants to reach. Possible states: "enterprise a", "enterprise b", enterprise c", "boarding house", "tram_ns", "tram_sn"
   tr_current_destination ;; Describes the current destination the tramrider wants to reach. Possible states are the bus stops, the workplace, the boarding house or the tram station
   tr_target ;; Describes which waypoint a tramrider is targeting in order to reach its destination
@@ -428,7 +428,7 @@ to move-pedestrians
   ask pedestrians [
 
     ;if movement_status is "waiting", wait
-    ifelse (movement_status = "waiting") [
+    ifelse (movement_status = "waiting_for_bus") [
       pedestrian-wait
     ]
     [
@@ -632,7 +632,7 @@ to walk-to-bus-stop
   ifelse (distance_to_pedestrian < 2)[
     ;move to the nearest node that is a bus stop
     move-to min-one-of nodes with [busstop? = true] [distance myself]
-    set movement_status "waiting"
+    set movement_status "waiting_for_bus"
   ]
   [
     face min-one-of nodes with [busstop? = true] [distance myself]
@@ -2004,12 +2004,12 @@ to move-tramriders
 
     ;; Ragemode-Calculation
     ;; Increasing the time waiting for the bus by one each second
-    if movement_status = "waiting for bus"
+    if movement_status = "waiting_for_bus"
       [set tr_waiting_time (tr_waiting_time + 1)]
 
     ;; Ending the waiting-on-the-bus process
     ;; When the waiting time exceeds the ragelimit, the tramrider decides to go to this destination by foot
-    if movement_status = "waiting for bus" and tr_waiting_time > tr_ragelimit [
+    if movement_status = "waiting_for_bus" and tr_waiting_time > tr_ragelimit [
       ;; Set the destination to the location that should've been previously approached by using the bus
       set tr_current_destination tr_ultimate_destination
       ;; When the destination is one of the trams: go to the tram. Else: Go to work
@@ -2024,16 +2024,16 @@ to move-tramriders
     ;; Starting the waiting-on-the-bus process
     ;; When a tramrider reaches the bus stop he wanted to go to, his status is turned to "waiting"
     if movement_status = "going to bus stop" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_tram"
-      [set movement_status "waiting for bus"]
+      [set movement_status "waiting_for_bus"]
     if movement_status = "going to bus stop" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_center"
-      [set movement_status "waiting for bus"]
+      [set movement_status "waiting_for_bus"]
     if movement_status = "going to bus stop" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_enterpriseC"
-      [set movement_status "waiting for bus"]
+      [set movement_status "waiting_for_bus"]
     if movement_status = "going to bus stop" and distance tr_target = 0 and [tr_n_name] of tr_target = "bus_stop_bhouse"
-      [set movement_status "waiting for bus"]
+      [set movement_status "waiting_for_bus"]
 
     ;; Check the possible collisions in order to control the moving process when the tramrider is not standing still
-    if movement_status != "working" and movement_status != "waiting for bus" [check-collision]
+    if movement_status != "working" and movement_status != "waiting_for_bus" [check-collision]
 
     ;; Moving towards the target
     ;; once the distance is less than 1, use move-to to land exactly on the target.
