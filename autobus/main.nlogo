@@ -694,7 +694,7 @@ to setup-bustrack
   let coords [[172 517] [166 384] [165 365] [415 346] [733 320] [723 216] [797 208]] ;; xy-coords of the nodes
   let names ["stop_bhouse" "stop_enterpriseC" "turn_1" "stop_center" "turn_2" "turn_3" "stop_tram"] ;; names of the nodes
   create-nodes 7 [
-    set hidden? false ;; hide, because nodes are just locigal elements
+    set hidden? true ;; hide, because nodes are just locigal elements
     set shape "circle"
     set size 15
     set color violet
@@ -706,6 +706,7 @@ to setup-bustrack
       set name item 0 names
       ifelse member? "stop" name [
         set busstop? true
+        set hidden? false
       ]
       [
         set busstop? false
