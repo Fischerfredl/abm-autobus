@@ -680,7 +680,7 @@ to setup-bus
     setxy 797 208
     set size 20
     set status "waiting"
-    set target one-of nodes with [name = "stop_tram"]
+    set target one-of nodes with [name = "bus_stop_tram"]
     set route routeTB
     set BTcalced? false
     set toWait 0
@@ -692,7 +692,7 @@ end
 ;; sets up the nodes which enable the bus to move along the route
 to setup-bustrack
   let coords [[172 517] [166 384] [165 365] [415 346] [733 320] [723 216] [797 208]] ;; xy-coords of the nodes
-  let names ["stop_bhouse" "stop_enterpriseC" "turn_1" "stop_center" "turn_2" "turn_3" "stop_tram"] ;; names of the nodes
+  let names ["bus_stop_bhouse" "bus_stop_enterpriseC" "turn_1" "bus_stop_center" "turn_2" "turn_3" "bus_stop_tram"] ;; names of the nodes
   create-nodes 7 [
     set hidden? true ;; hide, because nodes are just locigal elements
     set shape "circle"
@@ -721,13 +721,13 @@ to setup-bustrack
   set routeBT [0 0 0 0 0 0 0] ;; fill lists with dummy values
   set routeTB [0 0 0 0 0 0 0]
   ;; replace dummy values in first route with nodes in right order
-  set routeBT replace-item 0 routeBT (one-of nodes with [name = "stop_bhouse"])
-  set routeBT replace-item 1 routeBT (one-of nodes with [name = "stop_enterpriseC"])
+  set routeBT replace-item 0 routeBT (one-of nodes with [name = "bus_stop_bhouse"])
+  set routeBT replace-item 1 routeBT (one-of nodes with [name = "bus_stop_enterpriseC"])
   set routeBT replace-item 2 routeBT (one-of nodes with [name = "turn_1"])
-  set routeBT replace-item 3 routeBT (one-of nodes with [name = "stop_center"])
+  set routeBT replace-item 3 routeBT (one-of nodes with [name = "bus_stop_center"])
   set routeBT replace-item 4 routeBT (one-of nodes with [name = "turn_2"])
   set routeBT replace-item 5 routeBT (one-of nodes with [name = "turn_3"])
-  set routeBT replace-item 6 routeBT (one-of nodes with [name = "stop_tram"])
+  set routeBT replace-item 6 routeBT (one-of nodes with [name = "bus_stop_tram"])
   ;; with routeBT complete setting up routeTB becomes easier
   let counter 6
   foreach routeBT [ x ->
@@ -797,7 +797,7 @@ to busBoard
         ]
         [                          ;; if it was the last stop, set status to "waiting" and update route list
           set status "waiting"
-          ifelse [name] of target = "stop_tram" [
+          ifelse [name] of target = "bus_stop_tram" [
             set route routeTB
           ]
           [
@@ -816,6 +816,8 @@ end
 ;; calculates the time necessary for boarding (depending on how many passengers get on/off the bus)
 ;; interacts with passengers so they board/exit the bus
 to boardPassengers
+  show "=========================================="
+  show "=========================================="
   let boardingTime 0
   let currentStop [target] of self
   let waitingPatch patch-at 0 0
@@ -833,8 +835,8 @@ to boardPassengers
   ;; check if any possible passengers are waiting for the bus at this stop and add them to "passengersHopOn"
   if (any? ((pedestrians-on waitingPatch) with [movement_status = "waiting_for_bus"])) or
      (any? ((tramriders-on waitingPatch) with [movement_status = "waiting_for_bus"])) [
-    show "entered waiting if passengersHopOn"
     set passengersHopOn (turtle-set (pedestrians-on waitingPatch) with [movement_status = "waiting_for_bus"] (tramriders-on waitingPatch) with [movement_status = "waiting_for_bus"])
+    show (word "entered waiting if passengersHopOn: pho is now " passengersHopOn)
   ]
 
   ;; for each passenger that is waiting for the bus, check if the bus is going in the right direction
@@ -861,6 +863,8 @@ to boardPassengers
   if passengersHopOff != nobody [
     set boardingTime boardingTime + ((count passengersHopOff) * 1.5)
   ]
+
+  show remainingNodesOnRoute
   show (word "passengers to hop off " passengersHopOff)
   show (word "passengers to hop on " passengersHopOn)
   show (word "boarding time " boardingTime)
