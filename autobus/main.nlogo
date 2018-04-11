@@ -815,6 +815,7 @@ end
 to calcBoardingTime
   let boardingTime 0
   let currentStop [target] of self
+  let waitingPatch patch-at 0 0
   let passengersHopOn nobody
   let passengersHopOff nobody
   let remainingNodesOnRoute []
@@ -827,17 +828,17 @@ to calcBoardingTime
   ]
 
   ;; check if any possible passengers are waiting for the bus at this stop and add them to "passengersHopOn"
-  if (any? ((pedestrians-here) with [movement_status = "waiting_for_bus"])) or
-     (any? ((tramriders-here) with [movement_status = "waiting_for_bus"])) [
+  if (any? ((pedestrians-on waitingPatch) with [movement_status = "waiting_for_bus"])) or
+     (any? ((tramriders-on waitingPatch) with [movement_status = "waiting_for_bus"])) [
     show "entered waiting if passengersHopOn"
-    set passengersHopOn (turtle-set (pedestrians-here) with [movement_status = "waiting_for_bus"] (tramriders-here) with [movement_status = "waiting_for_bus"])
+    set passengersHopOn (turtle-set (pedestrians-on waitingPatch) with [movement_status = "waiting_for_bus"] (tramriders-on waitingPatch) with [movement_status = "waiting_for_bus"])
   ]
 
   ;; for each passenger that is waiting for the bus, check if the bus is going in the right direction
   ;; for the passenger to reach its "exit_bus_stop"; if that is the case, add 1.5 seconds of boarding time
   if passengersHopOn != nobody [
-    foreach passengersHopOn [ p ->
-      if member? ([exit_bus_stop] of p) remainingNodesOnRoute [
+    ask passengersHopOn [
+      if member? exit_bus_stop remainingNodesOnRoute [
         set boardingTime boardingTime + 1.5
       ]
     ]
