@@ -1235,57 +1235,12 @@ to trams-spawn-tramriders
     ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
     if (tram_exists_ns = 1 and tram_passengers_ns >= 1)[
       create-tramriders 1 [
-        ;; Setting the cosmetics
-        set shape "person"
-        set color yellow
-        set size 10
         ;; Setting the position outside of the trams' door
         setxy 800 156
-        ;; Setting the variables
         ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
         set tr_home "north"
-        ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
-        set movement_status "going to bus stop"
-        ;; Calculation of the enterprise the tramrider is working at
-        ;; At first, a random value is calculated in order to assign the person in the following step
-        ;; 40 people are working at Enterprise A, 60 at Enterprise B, 400 at Enterprise C and 5 are included for the Boarding House
-        set tr_random_val random (505 - count_employees_enterprise_a - count_employees_enterprise_b - count_employees_enterprise_c - count_visitors_bhouse)
-        ;; Depending of the result for the random value, one of the four possible destinations is chosen
-        if tr_random_val <= (40 - count_employees_enterprise_a) [set tr_ultimate_destination "enterprise a"]
-        if tr_random_val > (40 - count_employees_enterprise_a) and tr_random_val <= (100 - (count_employees_enterprise_a + count_employees_enterprise_b)) [set tr_ultimate_destination "enterprise b"]
-        if tr_random_val > (100 - (count_employees_enterprise_a + count_employees_enterprise_b)) and tr_random_val <= (500 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) [set tr_ultimate_destination "enterprise c"]
-        if tr_random_val > (500 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) and tr_random_val <= (505 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse)) [set tr_ultimate_destination "boarding house"]
-        ;; Based on the calculation of the destination of the tramrider, the desired bus stop for existing the bus is chosen:
-        ;; Enterprise A: 50% of the employees exit the bus at the stop in the center of the map, 50% exit at enterprise C
-        if tr_ultimate_destination = "enterprise a" [
-          set tr_random_val random 100
-          if tr_random_val > 50 [set exit_bus_stop "bus_stop_center" ]
-        ]
-        ;; Enterprise B: All of the employees exit the bus at the bus stop next to Enterprise C
-        if tr_ultimate_destination = "enterprise b" [set exit_bus_stop "bus_stop_enterpriseC"]
-        ;; Enterprise C: All of the employees exit the bus at the bus stop next to Enterprise C
-        if tr_ultimate_destination = "enterprise c" [set exit_bus_stop "bus_stop_enterpriseC"]
-        ;; Boarding house: All of the employees exit the bus at the bus stop near the Boarding House
-        if tr_ultimate_destination = "boarding house" [set exit_bus_stop "bus_stop_bhouse"]
-        ;; A new spawn should also increase the count of people existing for the assigned Enterprise by 1
-        if tr_ultimate_destination = "enterprise a" [set count_employees_enterprise_a (count_employees_enterprise_a + 1)] ;; Enterprise A
-        if tr_ultimate_destination = "enterprise b" [set count_employees_enterprise_b (count_employees_enterprise_b + 1)] ;; Enterprise B
-        if tr_ultimate_destination = "enterprise c" [set count_employees_enterprise_c (count_employees_enterprise_c + 1)] ;; Enterprise C
-        if tr_ultimate_destination = "boarding house" [set count_visitors_bhouse (count_visitors_bhouse + 1)] ;; Boarding House
-        ;; Since all tramriders intend to go to the bus stop, the current destination is set to the nearest bus stop, which is the bus stop at the tram
-        set tr_current_destination "bus_stop_tram"
-        ;; The first waypoint after leaving the tram for a tramrider coming from the city is the North Eastern Corner of the TZI
-        ;; The tramrider is facing the waypoint immediatly after leaving the tram
-        set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"]
-        face tr_target
-        ;; Setting the waiting time to 0
-        set tr_waiting_time 0
-        ;; Setting the ragelimt based on probability
-        ifelse random 100 > 20
-          ;; The Maximum waiting time for the bus is 5 Minutes
-          [set tr_ragelimit random 300]
-          ;; 20% of people don't even want to intend the bus
-          [set tr_ragelimit 0]
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
       ]
       ;; passengers who left are being subtracted from the total count
       set tram_passengers_ns (tram_passengers_ns - 1)
@@ -1295,57 +1250,12 @@ to trams-spawn-tramriders
     ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
     if (tram_exists_ns = 1 and tram_passengers_ns >= 2)[
       create-tramriders 2 [
-        ;; Setting the cosmetics
-        set shape "person"
-        set color yellow
-        set size 10
         ;; Setting the position outside of the trams' door
         setxy 804 165
-        ;; Setting the variables
         ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
         set tr_home "north"
-        ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
-        set movement_status "going to bus stop"
-        ;; Calculation of the enterprise the tramrider is working at
-        ;; At first, a random value is calculated in order to assign the person in the following step
-        ;; 40 people are working at Enterprise A, 60 at Enterprise B, 400 at Enterprise C and 5 are included for the Boarding House
-        set tr_random_val random (505 - count_employees_enterprise_a - count_employees_enterprise_b - count_employees_enterprise_c - count_visitors_bhouse)
-        ;; Depending of the result for the random value, one of the four possible destinations is chosen
-        if tr_random_val <= (40 - count_employees_enterprise_a) [set tr_ultimate_destination "enterprise a"]
-        if tr_random_val > (40 - count_employees_enterprise_a) and tr_random_val <= (100 - (count_employees_enterprise_a + count_employees_enterprise_b)) [set tr_ultimate_destination "enterprise b"]
-        if tr_random_val > (100 - (count_employees_enterprise_a + count_employees_enterprise_b)) and tr_random_val <= (500 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) [set tr_ultimate_destination "enterprise c"]
-        if tr_random_val > (500 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) and tr_random_val <= (505 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse)) [set tr_ultimate_destination "boarding house"]
-        ;; Based on the calculation of the destination of the tramrider, the desired bus stop for existing the bus is chosen:
-        ;; Enterprise A: 50% of the employees exit the bus at the stop in the center of the map, 50% exit at enterprise C
-        if tr_ultimate_destination = "enterprise a" [
-          set tr_random_val random 100
-          if tr_random_val > 50 [set exit_bus_stop "bus_stop_center" ]
-        ]
-        ;; Enterprise B: All of the employees exit the bus at the bus stop next to Enterprise C
-        if tr_ultimate_destination = "enterprise b" [set exit_bus_stop "bus_stop_enterpriseC"]
-        ;; Enterprise C: All of the employees exit the bus at the bus stop next to Enterprise C
-        if tr_ultimate_destination = "enterprise c" [set exit_bus_stop "bus_stop_enterpriseC"]
-        ;; Boarding house: All of the employees exit the bus at the bus stop near the Boarding House
-        if tr_ultimate_destination = "boarding house" [set exit_bus_stop "bus_stop_bhouse"]
-        ;; A new spawn should also increase the count of people existing for the assigned Enterprise by 1
-        if tr_ultimate_destination = "enterprise a" [set count_employees_enterprise_a (count_employees_enterprise_a + 1)] ;; Enterprise A
-        if tr_ultimate_destination = "enterprise b" [set count_employees_enterprise_b (count_employees_enterprise_b + 1)] ;; Enterprise B
-        if tr_ultimate_destination = "enterprise c" [set count_employees_enterprise_c (count_employees_enterprise_c + 1)] ;; Enterprise C
-        if tr_ultimate_destination = "boarding house" [set count_visitors_bhouse (count_visitors_bhouse + 1)] ;; Boarding House
-        ;; Since all tramriders intend to go to the bus stop, the current destination is set to the nearest bus stop, which is the bus stop at the tram
-        set tr_current_destination "bus_stop_tram"
-        ;; The first waypoint after leaving the tram for a tramrider coming from the city is the North Eastern Corner of the TZI
-        ;; The tramrider is facing the waypoint immediatly after leaving the tram
-        set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"]
-        face tr_target
-        ;; Setting the waiting time to 0
-        set tr_waiting_time 0
-        ;; Setting the ragelimt based on probability
-        ifelse random 100 > 20
-          ;; The Maximum waiting time for the bus is 5 Minutes
-          [set tr_ragelimit random 300]
-          ;; 20% of people don't even want to intend the bus
-          [set tr_ragelimit 0]
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
       ]
       ;; passengers who left are being subtracted from the total count
       set tram_passengers_ns (tram_passengers_ns - 2)
@@ -1359,57 +1269,12 @@ to trams-spawn-tramriders
     ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
     if (tram_exists_ns = 1 and tram_passengers_ns >= 2)[
       create-tramriders 2 [
-        ;; Setting the cosmetics
-        set shape "person"
-        set color yellow
-        set size 10
         ;; Setting the position outside of the trams' door
         setxy 807 168
-        ;; Setting the variables
         ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
         set tr_home "north"
-        ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
-        set movement_status "going to bus stop"
-        ;; Calculation of the enterprise the tramrider is working at
-        ;; At first, a random value is calculated in order to assign the person in the following step
-        ;; 40 people are working at Enterprise A, 60 at Enterprise B, 400 at Enterprise C and 5 are included for the Boarding House
-        set tr_random_val random (505 - count_employees_enterprise_a - count_employees_enterprise_b - count_employees_enterprise_c - count_visitors_bhouse)
-        ;; Depending of the result for the random value, one of the four possible destinations is chosen
-        if tr_random_val <= (40 - count_employees_enterprise_a) [set tr_ultimate_destination "enterprise a"]
-        if tr_random_val > (40 - count_employees_enterprise_a) and tr_random_val <= (100 - (count_employees_enterprise_a + count_employees_enterprise_b)) [set tr_ultimate_destination "enterprise b"]
-        if tr_random_val > (100 - (count_employees_enterprise_a + count_employees_enterprise_b)) and tr_random_val <= (500 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) [set tr_ultimate_destination "enterprise c"]
-        if tr_random_val > (500 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) and tr_random_val <= (505 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse)) [set tr_ultimate_destination "boarding house"]
-        ;; Based on the calculation of the destination of the tramrider, the desired bus stop for existing the bus is chosen:
-        ;; Enterprise A: 50% of the employees exit the bus at the stop in the center of the map, 50% exit at enterprise C
-        if tr_ultimate_destination = "enterprise a" [
-          set tr_random_val random 100
-          if tr_random_val > 50 [set exit_bus_stop "bus_stop_center" ]
-        ]
-        ;; Enterprise B: All of the employees exit the bus at the bus stop next to Enterprise C
-        if tr_ultimate_destination = "enterprise b" [set exit_bus_stop "bus_stop_enterpriseC"]
-        ;; Enterprise C: All of the employees exit the bus at the bus stop next to Enterprise C
-        if tr_ultimate_destination = "enterprise c" [set exit_bus_stop "bus_stop_enterpriseC"]
-        ;; Boarding house: All of the employees exit the bus at the bus stop near the Boarding House
-        if tr_ultimate_destination = "boarding house" [set exit_bus_stop "bus_stop_bhouse"]
-        ;; A new spawn should also increase the count of people existing for the assigned Enterprise by 1
-        if tr_ultimate_destination = "enterprise a" [set count_employees_enterprise_a (count_employees_enterprise_a + 1)] ;; Enterprise A
-        if tr_ultimate_destination = "enterprise b" [set count_employees_enterprise_b (count_employees_enterprise_b + 1)] ;; Enterprise B
-        if tr_ultimate_destination = "enterprise c" [set count_employees_enterprise_c (count_employees_enterprise_c + 1)] ;; Enterprise C
-        if tr_ultimate_destination = "boarding house" [set count_visitors_bhouse (count_visitors_bhouse + 1)] ;; Boarding House
-        ;; Since all tramriders intend to go to the bus stop, the current destination is set to the nearest bus stop, which is the bus stop at the tram
-        set tr_current_destination "bus_stop_tram"
-        ;; The first waypoint after leaving the tram for a tramrider coming from the city is the North Eastern Corner of the TZI
-        ;; The tramrider is facing the waypoint immediatly after leaving the tram
-        set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"]
-        face tr_target
-        ;; Setting the waiting time to 0
-        set tr_waiting_time 0
-        ;; Setting the ragelimt based on probability
-        ifelse random 100 > 20
-          ;; The Maximum waiting time for the bus is 5 Minutes
-          [set tr_ragelimit random 300]
-          ;; 20% of people don't even want to intend the bus
-          [set tr_ragelimit 0]
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
       ]
       ;; passengers who left are being subtracted from the total count
       set tram_passengers_ns (tram_passengers_ns - 2)
@@ -1418,57 +1283,12 @@ to trams-spawn-tramriders
     ;; Exceptional case: Since old trams only have double-doors, if one passenger is remaining in the tram, he also needs to get out
     if (tram_exists_ns = 1 and tram_passengers_ns = 1)[
       create-tramriders 1 [
-        ;; Setting the cosmetics
-        set shape "person"
-        set color yellow
-        set size 10
         ;; Setting the position outside of the trams' door
         setxy 807 168
-        ;; Setting the variables
         ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
         set tr_home "north"
-        ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
-        set movement_status "going to bus stop"
-        ;; Calculation of the enterprise the tramrider is working at
-        ;; At first, a random value is calculated in order to assign the person in the following step
-        ;; 40 people are working at Enterprise A, 60 at Enterprise B, 400 at Enterprise C and 5 are included for the Boarding House
-        set tr_random_val random (505 - count_employees_enterprise_a - count_employees_enterprise_b - count_employees_enterprise_c - count_visitors_bhouse)
-        ;; Depending of the result for the random value, one of the four possible destinations is chosen
-        if tr_random_val <= (40 - count_employees_enterprise_a) [set tr_ultimate_destination "enterprise a"]
-        if tr_random_val > (40 - count_employees_enterprise_a) and tr_random_val <= (100 - (count_employees_enterprise_a + count_employees_enterprise_b)) [set tr_ultimate_destination "enterprise b"]
-        if tr_random_val > (100 - (count_employees_enterprise_a + count_employees_enterprise_b)) and tr_random_val <= (500 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) [set tr_ultimate_destination "enterprise c"]
-        if tr_random_val > (500 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) and tr_random_val <= (505 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse)) [set tr_ultimate_destination "boarding house"]
-        ;; Based on the calculation of the destination of the tramrider, the desired bus stop for existing the bus is chosen:
-        ;; Enterprise A: 50% of the employees exit the bus at the stop in the center of the map, 50% exit at enterprise C
-        if tr_ultimate_destination = "enterprise a" [
-          set tr_random_val random 100
-          if tr_random_val > 50 [set exit_bus_stop "bus_stop_center" ]
-        ]
-        ;; Enterprise B: All of the employees exit the bus at the bus stop next to Enterprise C
-        if tr_ultimate_destination = "enterprise b" [set exit_bus_stop "bus_stop_enterpriseC"]
-        ;; Enterprise C: All of the employees exit the bus at the bus stop next to Enterprise C
-        if tr_ultimate_destination = "enterprise c" [set exit_bus_stop "bus_stop_enterpriseC"]
-        ;; Boarding house: All of the employees exit the bus at the bus stop near the Boarding House
-        if tr_ultimate_destination = "boarding house" [set exit_bus_stop "bus_stop_bhouse"]
-        ;; A new spawn should also increase the count of people existing for the assigned Enterprise by 1
-        if tr_ultimate_destination = "enterprise a" [set count_employees_enterprise_a (count_employees_enterprise_a + 1)] ;; Enterprise A
-        if tr_ultimate_destination = "enterprise b" [set count_employees_enterprise_b (count_employees_enterprise_b + 1)] ;; Enterprise B
-        if tr_ultimate_destination = "enterprise c" [set count_employees_enterprise_c (count_employees_enterprise_c + 1)] ;; Enterprise C
-        if tr_ultimate_destination = "boarding house" [set count_visitors_bhouse (count_visitors_bhouse + 1)] ;; Boarding House
-        ;; Since all tramriders intend to go to the bus stop, the current destination is set to the nearest bus stop, which is the bus stop at the tram
-        set tr_current_destination "bus_stop_tram"
-        ;; The first waypoint after leaving the tram for a tramrider coming from the city is the North Eastern Corner of the TZI
-        ;; The tramrider is facing the waypoint immediatly after leaving the tram
-        set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"]
-        face tr_target
-        ;; Setting the waiting time to 0
-        set tr_waiting_time 0
-        ;; Setting the ragelimt based on probability
-        ifelse random 100 > 20
-          ;; The Maximum waiting time for the bus is 5 Minutes
-          [set tr_ragelimit random 300]
-          ;; 20% of people don't even want to intend the bus
-          [set tr_ragelimit 0]
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
       ]
       ;; passengers who left are being subtracted from the total count
       set tram_passengers_ns (tram_passengers_ns - 1)
@@ -1486,57 +1306,12 @@ to trams-spawn-tramriders
     ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
     if (tram_exists_sn = 1 and tram_passengers_sn >= 1)[
       create-tramriders 1 [
-        ;; Setting the cosmetics
-        set shape "person"
-        set color yellow
-        set size 10
         ;; Setting the position outside of the trams' door
         setxy 849 196
-        ;; Setting the variables
         ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
         set tr_home "south"
-        ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
-        set movement_status "going to bus stop"
-        ;; Calculation of the enterprise the tramrider is working at
-        ;; At first, a random value is calculated in order to assign the person in the following step
-        ;; 40 people are working at Enterprise A, 60 at Enterprise B, 400 at Enterprise C and 5 are included for the Boarding House
-        set tr_random_val random (505 - count_employees_enterprise_a - count_employees_enterprise_b - count_employees_enterprise_c - count_visitors_bhouse)
-        ;; Depending of the result for the random value, one of the four possible destinations is chosen
-        if tr_random_val <= (40 - count_employees_enterprise_a) [set tr_ultimate_destination "enterprise a"]
-        if tr_random_val > (40 - count_employees_enterprise_a) and tr_random_val <= (100 - (count_employees_enterprise_a + count_employees_enterprise_b)) [set tr_ultimate_destination "enterprise b"]
-        if tr_random_val > (100 - (count_employees_enterprise_a + count_employees_enterprise_b)) and tr_random_val <= (500 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) [set tr_ultimate_destination "enterprise c"]
-        if tr_random_val > (500 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) and tr_random_val <= (505 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse)) [set tr_ultimate_destination "boarding house"]
-        ;; Based on the calculation of the destination of the tramrider, the desired bus stop for existing the bus is chosen:
-        ;; Enterprise A: 50% of the employees exit the bus at the stop in the center of the map, 50% exit at enterprise C
-        if tr_ultimate_destination = "enterprise a" [
-          set tr_random_val random 100
-          if tr_random_val > 50 [set exit_bus_stop "bus_stop_center" ]
-        ]
-        ;; Enterprise B: All of the employees exit the bus at the bus stop next to Enterprise C
-        if tr_ultimate_destination = "enterprise b" [set exit_bus_stop "bus_stop_enterpriseC"]
-        ;; Enterprise C: All of the employees exit the bus at the bus stop next to Enterprise C
-        if tr_ultimate_destination = "enterprise c" [set exit_bus_stop "bus_stop_enterpriseC"]
-        ;; Boarding house: All of the employees exit the bus at the bus stop near the Boarding House
-        if tr_ultimate_destination = "boarding house" [set exit_bus_stop "bus_stop_bhouse"]
-        ;; A new spawn should also increase the count of people existing for the assigned Enterprise by 1
-        if tr_ultimate_destination = "enterprise a" [set count_employees_enterprise_a (count_employees_enterprise_a + 1)] ;; Enterprise A
-        if tr_ultimate_destination = "enterprise b" [set count_employees_enterprise_b (count_employees_enterprise_b + 1)] ;; Enterprise B
-        if tr_ultimate_destination = "enterprise c" [set count_employees_enterprise_c (count_employees_enterprise_c + 1)] ;; Enterprise C
-        if tr_ultimate_destination = "boarding house" [set count_visitors_bhouse (count_visitors_bhouse + 1)] ;; Boarding House
-        ;; Since all tramriders intend to go to the bus stop, the current destination is set to the nearest bus stop, which is the bus stop at the tram
-        set tr_current_destination "bus_stop_tram"
-        ;; The first waypoint after leaving the tram for a tramrider coming from the city is the North Eastern Corner of the TZI
-        ;; The tramrider is facing the waypoint immediatly after leaving the tram
-        set tr_target one-of tr_nodes with [tr_n_name = "sn tram crossing"]
-        face tr_target
-        ;; Setting the waiting time to 0
-        set tr_waiting_time 0
-        ;; Setting the ragelimt based on probability
-        ifelse random 100 > 20
-          ;; The Maximum waiting time for the bus is 5 Minutes
-          [set tr_ragelimit random 300]
-          ;; 20% of people don't even want to intend the bus
-          [set tr_ragelimit 0]
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
       ]
       ;; passengers who left are being subtracted from the total count
       set tram_passengers_sn (tram_passengers_sn - 1)
@@ -1546,57 +1321,12 @@ to trams-spawn-tramriders
     ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
     if (tram_exists_sn = 1 and tram_passengers_sn >= 2)[
       create-tramriders 2 [
-        ;; Setting the cosmetics
-        set shape "person"
-        set color yellow
-        set size 10
         ;; Setting the position outside of the trams' door
         setxy 845 189
-        ;; Setting the variables
         ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
         set tr_home "south"
-        ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
-        set movement_status "going to bus stop"
-        ;; Calculation of the enterprise the tramrider is working at
-        ;; At first, a random value is calculated in order to assign the person in the following step
-        ;; 40 people are working at Enterprise A, 60 at Enterprise B, 400 at Enterprise C and 5 are included for the Boarding House
-        set tr_random_val random (505 - count_employees_enterprise_a - count_employees_enterprise_b - count_employees_enterprise_c - count_visitors_bhouse)
-        ;; Depending of the result for the random value, one of the four possible destinations is chosen
-        if tr_random_val <= (40 - count_employees_enterprise_a) [set tr_ultimate_destination "enterprise a"]
-        if tr_random_val > (40 - count_employees_enterprise_a) and tr_random_val <= (100 - (count_employees_enterprise_a + count_employees_enterprise_b)) [set tr_ultimate_destination "enterprise b"]
-        if tr_random_val > (100 - (count_employees_enterprise_a + count_employees_enterprise_b)) and tr_random_val <= (500 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) [set tr_ultimate_destination "enterprise c"]
-        if tr_random_val > (500 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) and tr_random_val <= (505 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse)) [set tr_ultimate_destination "boarding house"]
-        ;; Based on the calculation of the destination of the tramrider, the desired bus stop for existing the bus is chosen:
-        ;; Enterprise A: 50% of the employees exit the bus at the stop in the center of the map, 50% exit at enterprise C
-        if tr_ultimate_destination = "enterprise a" [
-          set tr_random_val random 100
-          if tr_random_val > 50 [set exit_bus_stop "bus_stop_center" ]
-        ]
-        ;; Enterprise B: All of the employees exit the bus at the bus stop next to Enterprise C
-        if tr_ultimate_destination = "enterprise b" [set exit_bus_stop "bus_stop_enterpriseC"]
-        ;; Enterprise C: All of the employees exit the bus at the bus stop next to Enterprise C
-        if tr_ultimate_destination = "enterprise c" [set exit_bus_stop "bus_stop_enterpriseC"]
-        ;; Boarding house: All of the employees exit the bus at the bus stop near the Boarding House
-        if tr_ultimate_destination = "boarding house" [set exit_bus_stop "bus_stop_bhouse"]
-        ;; A new spawn should also increase the count of people existing for the assigned Enterprise by 1
-        if tr_ultimate_destination = "enterprise a" [set count_employees_enterprise_a (count_employees_enterprise_a + 1)] ;; Enterprise A
-        if tr_ultimate_destination = "enterprise b" [set count_employees_enterprise_b (count_employees_enterprise_b + 1)] ;; Enterprise B
-        if tr_ultimate_destination = "enterprise c" [set count_employees_enterprise_c (count_employees_enterprise_c + 1)] ;; Enterprise C
-        if tr_ultimate_destination = "boarding house" [set count_visitors_bhouse (count_visitors_bhouse + 1)] ;; Boarding House
-        ;; Since all tramriders intend to go to the bus stop, the current destination is set to the nearest bus stop, which is the bus stop at the tram
-        set tr_current_destination "bus_stop_tram"
-        ;; The first waypoint after leaving the tram for a tramrider coming from the city is the North Eastern Corner of the TZI
-        ;; The tramrider is facing the waypoint immediatly after leaving the tram
-        set tr_target one-of tr_nodes with [tr_n_name = "sn tram crossing"]
-        face tr_target
-        ;; Setting the waiting time to 0
-        set tr_waiting_time 0
-        ;; Setting the ragelimt based on probability
-        ifelse random 100 > 20
-          ;; The Maximum waiting time for the bus is 5 Minutes
-          [set tr_ragelimit random 300]
-          ;; 20% of people don't even want to intend the bus
-          [set tr_ragelimit 0]
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
       ]
       ;; passengers who left are being subtracted from the total count
       set tram_passengers_sn (tram_passengers_sn - 2)
@@ -1609,57 +1339,12 @@ to trams-spawn-tramriders
     ;; Door 1 (double door)
     if (tram_exists_sn = 1 and tram_passengers_sn >= 2)[
       create-tramriders 2 [
-        ;; Setting the cosmetics
-        set shape "person"
-        set color yellow
-        set size 10
         ;; Setting the position outside of the trams' door
         setxy 841 182
-        ;; Setting the variables
         ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
         set tr_home "south"
-        ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
-        set movement_status "going to bus stop"
-        ;; Calculation of the enterprise the tramrider is working at
-        ;; At first, a random value is calculated in order to assign the person in the following step
-        ;; 40 people are working at Enterprise A, 60 at Enterprise B, 400 at Enterprise C and 5 are included for the Boarding House
-        set tr_random_val random (505 - count_employees_enterprise_a - count_employees_enterprise_b - count_employees_enterprise_c - count_visitors_bhouse)
-        ;; Depending of the result for the random value, one of the four possible destinations is chosen
-        if tr_random_val <= (40 - count_employees_enterprise_a) [set tr_ultimate_destination "enterprise a"]
-        if tr_random_val > (40 - count_employees_enterprise_a) and tr_random_val <= (100 - (count_employees_enterprise_a + count_employees_enterprise_b)) [set tr_ultimate_destination "enterprise b"]
-        if tr_random_val > (100 - (count_employees_enterprise_a + count_employees_enterprise_b)) and tr_random_val <= (500 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) [set tr_ultimate_destination "enterprise c"]
-        if tr_random_val > (500 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c)) and tr_random_val <= (505 - (count_employees_enterprise_a + count_employees_enterprise_b + count_employees_enterprise_c + count_visitors_bhouse)) [set tr_ultimate_destination "boarding house"]
-        ;; Based on the calculation of the destination of the tramrider, the desired bus stop for existing the bus is chosen:
-        ;; Enterprise A: 50% of the employees exit the bus at the stop in the center of the map, 50% exit at enterprise C
-        if tr_ultimate_destination = "enterprise a" [
-          set tr_random_val random 100
-          if tr_random_val > 50 [set exit_bus_stop "bus_stop_center" ]
-        ]
-        ;; Enterprise B: All of the employees exit the bus at the bus stop next to Enterprise C
-        if tr_ultimate_destination = "enterprise b" [set exit_bus_stop "bus_stop_enterpriseC"]
-        ;; Enterprise C: All of the employees exit the bus at the bus stop next to Enterprise C
-        if tr_ultimate_destination = "enterprise c" [set exit_bus_stop "bus_stop_enterpriseC"]
-        ;; Boarding house: All of the employees exit the bus at the bus stop near the Boarding House
-        if tr_ultimate_destination = "boarding house" [set exit_bus_stop "bus_stop_bhouse"]
-        ;; A new spawn should also increase the count of people existing for the assigned Enterprise by 1
-        if tr_ultimate_destination = "enterprise a" [set count_employees_enterprise_a (count_employees_enterprise_a + 1)] ;; Enterprise A
-        if tr_ultimate_destination = "enterprise b" [set count_employees_enterprise_b (count_employees_enterprise_b + 1)] ;; Enterprise B
-        if tr_ultimate_destination = "enterprise c" [set count_employees_enterprise_c (count_employees_enterprise_c + 1)] ;; Enterprise C
-        if tr_ultimate_destination = "boarding house" [set count_visitors_bhouse (count_visitors_bhouse + 1)] ;; Boarding House
-        ;; Since all tramriders intend to go to the bus stop, the current destination is set to the nearest bus stop, which is the bus stop at the tram
-        set tr_current_destination "bus_stop_tram"
-        ;; The first waypoint after leaving the tram for a tramrider coming from the city is the North Eastern Corner of the TZI
-        ;; The tramrider is facing the waypoint immediatly after leaving the tram
-        set tr_target one-of tr_nodes with [tr_n_name = "sn tram crossing"]
-        face tr_target
-        ;; Setting the waiting time to 0
-        set tr_waiting_time 0
-        ;; Setting the ragelimt based on probability
-        ifelse random 100 > 20
-          ;; The Maximum waiting time for the bus is 5 Minutes
-          [set tr_ragelimit random 300]
-          ;; 20% of people don't even want to intend the bus
-          [set tr_ragelimit 0]
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
       ]
       ;; passengers who left are being subtracted from the total count
       set tram_passengers_sn (tram_passengers_sn - 2)
@@ -1668,15 +1353,27 @@ to trams-spawn-tramriders
     ;; If only 1 passenger remains
     if (tram_exists_sn = 1 and tram_passengers_sn = 1)[
       create-tramriders 1 [
-        ;; Setting the cosmetics
+        ;; Setting the position outside of the trams' door
+        setxy 841 182
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "south"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_sn (tram_passengers_sn - 1)
+    ]
+  ]
+end
+
+
+to tramrider-spawning-process
+
+;; Setting the cosmetics
         set shape "person"
         set color yellow
         set size 10
-        ;; Setting the position outside of the trams' door
-        setxy 841 182
         ;; Setting the variables
-        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
-        set tr_home "south"
         ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
         set movement_status "going to bus stop"
         ;; Calculation of the enterprise the tramrider is working at
@@ -1709,8 +1406,8 @@ to trams-spawn-tramriders
         set tr_current_destination "bus_stop_tram"
         ;; The first waypoint after leaving the tram for a tramrider coming from the city is the North Eastern Corner of the TZI
         ;; The tramrider is facing the waypoint immediatly after leaving the tram
-        set tr_target one-of tr_nodes with [tr_n_name = "sn tram crossing"]
-        face tr_target
+        if tr_home = "north" [set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"] face tr_target]
+        if tr_home = "south" [set tr_target one-of tr_nodes with [tr_n_name = "sn tram crossing"] face tr_target]
         ;; Setting the waiting time to 0
         set tr_waiting_time 0
         ;; Setting the ragelimt based on probability
@@ -1719,11 +1416,7 @@ to trams-spawn-tramriders
           [set tr_ragelimit random 300]
           ;; 20% of people don't even want to intend the bus
           [set tr_ragelimit 0]
-      ]
-      ;; passengers who left are being subtracted from the total count
-      set tram_passengers_sn (tram_passengers_sn - 1)
-    ]
-  ]
+
 end
 
 
