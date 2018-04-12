@@ -1759,25 +1759,25 @@ to setup-tr_nodes
   create-tr_nodes 1 [
     set tr_n_id 5
     set tr_n_name "bus_stop_tram"
-    setxy 812 208
+    setxy 797 208
     hide-turtle
   ]
   create-tr_nodes 1 [
     set tr_n_id 6
     set tr_n_name "bus_stop_center"
-    setxy 411 347
+    setxy 415 346
     hide-turtle
   ]
   create-tr_nodes 1 [
     set tr_n_id 7
     set tr_n_name "bus_stop_enterpriseC"
-    setxy 175 385
+    setxy 166 384
     hide-turtle
   ]
   create-tr_nodes 1 [
     set tr_n_id 8
     set tr_n_name "bus_stop_bhouse"
-    setxy 173 517
+    setxy 172 517
     hide-turtle
   ]
 
