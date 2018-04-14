@@ -323,99 +323,77 @@ to spawn-pedestrians
   ; spawn a pedestrian every 20 seconds/ticks
   if (ticks mod 20 = 0) [
     ; set a random number to spawn a random pedestrian-type
-    set rand_pedestrian random 6
+    set rand_pedestrian random 7
 
 
-    if(rand_pedestrian = 0)[
-      create-pedestrians 1 [
-        set pedestrian_type "no_bus"
-        set shape "person"
-        set color red
+
+    create-pedestrians 1 [
+      set shape "person"
+      set color red
+      set size 10
+
+      if(rand_pedestrian = 0) [
         set xcor 307
         set ycor 507
         set goalx 373
         set goaly 56
-        set size 10
-        set waiting-time 0
-        facexy goalx goaly
-      ]
-    ]
 
-    if(rand_pedestrian = 1)[
-      create-pedestrians 1 [
+      ]
+
+      if(rand_pedestrian = 1)[
         set pedestrian_type "bus_to_tram"
-        set shape "person"
-        set color red
         set xcor 285
         set ycor 620
         set goalx 390
         set goaly 54
-        set size 10
         set waiting-time one-of [120 240 480 600]
         set exit_bus_stop "bus_stop_tram"
-        facexy goalx goaly
       ]
-    ]
 
-    if(rand_pedestrian = 2)[
-      create-pedestrians 1 [
-        set pedestrian_type "no_bus"
-        set shape "person"
-        set color red
+      if(rand_pedestrian = 2)[
         set xcor 15
         set ycor 636
         set goalx 267
         set goaly 618
-        set size 10
-        set waiting-time 0
-        facexy goalx goaly
       ]
-    ]
 
-    if(rand_pedestrian = 3)[
-      create-pedestrians 1 [
+      if(rand_pedestrian = 3)[
         set pedestrian_type "bus_to_center"
-        set shape "person"
-        set color red
         set xcor 20
         set ycor 527
         set goalx 390
         set goaly 54
-        set size 10
         set waiting-time one-of [120 240 480 600]
         set exit_bus_stop "bus_stop_center"
-        facexy goalx goaly
       ]
-    ]
 
-    if(rand_pedestrian = 4)[
-      create-pedestrians 1 [
-        set pedestrian_type "no_bus"
-        set shape "person"
-        set color red
+      if(rand_pedestrian = 4)[
         set xcor 285
         set ycor 620
         set goalx 390
         set goaly 54
-        set size 10
-        set waiting-time 0
-        facexy goalx goaly
       ]
-    ]
 
-    if(rand_pedestrian = 5)[
-      create-pedestrians 1 [
-        set pedestrian_type "no_bus"
-        set shape "person"
-        set color red
+      if(rand_pedestrian = 5)[
         set xcor 20
         set ycor 527
         set goalx 390
         set goaly 54
-        set size 10
-        set waiting-time 0
-        facexy goalx goaly
       ]
+
+      if(rand_pedestrian = 6)[
+        set xcor 868
+        set ycor 289
+        set goalx 415
+        set goaly 345
+      ]
+
+      if (rand_pedestrian = 0 or rand_pedestrian = 2 or rand_pedestrian = 4 or rand_pedestrian = 5 or rand_pedestrian = 6)[
+        set pedestrian_type "no_bus"
+        set waiting-time 0
+      ]
+
+      facexy goalx goaly
     ]
   ]
 end
@@ -438,7 +416,7 @@ to move-pedestrians
         check-crossing
         ;die if the goal has been reached
         ifelse ([pxcor] of patch-here = goalx and [pycor] of patch-here = goaly)[
-          die
+          pedestrians-reach-goal
         ]
         [
           ;cross the street if crossing-street? is true or walk normally otherwise
@@ -466,6 +444,10 @@ to move-pedestrians
       ]
     ]
   ]
+end
+
+to pedestrians-reach-goal
+  die
 end
 
 ;;
@@ -529,6 +511,19 @@ to check-crossing
       set goaly 114
     ]
   ]
+
+  if ([pxcor] of patch-here = 766 and ([pycor] of patch-here = 294 or [pycor] of patch-here = 295 or [pycor] of patch-here = 296 or [pycor] of patch-here = 297 or [pycor] of patch-here = 298)) [
+    set crossing-street? true
+    set crossingx 727
+    set crossingy 298
+  ]
+
+  if ([pxcor] of patch-here = 644 and ([pycor] of patch-here = 301 or [pycor] of patch-here = 302)) [
+    set crossing-street? true
+    set crossingx 625
+    set crossingy 303
+  ]
+
 
 end
 
