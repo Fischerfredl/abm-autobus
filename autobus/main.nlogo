@@ -447,7 +447,13 @@ to move-pedestrians
 end
 
 to pedestrians-reach-goal
-  die
+  ifelse (goalx != 610 and goaly != 114) [
+    die
+  ]
+  [
+    set goalx 390
+    set goaly 54
+  ]
 end
 
 ;;
