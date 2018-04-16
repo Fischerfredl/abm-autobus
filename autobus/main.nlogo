@@ -61,13 +61,14 @@ patches-own [
 ]
 
 busses-own [
-  target      ;; the node where the bus is currently driving towards
-  status      ;; information about the current state of this agent ("driving", "waiting")
-  route       ;; list containing the nodes which represents the current route of the bus; either from boarding house to TZI or vice versa
-  passengers  ;; list containing agents which are currently on the bus
-  BTcalced?   ;; indicates wether boarding time was already calculated or not (used in busBoard function)
-  waited      ;; seconds/ticks since bus stopped for boarding
-  toWait      ;; seconds/ticks that bus has to wait according to number of passenger getting on/off the bus
+  target              ;; the node where the bus is currently driving towards
+  status              ;; information about the current state of this agent ("driving", "waiting")
+  route               ;; list containing the nodes which represents the current route of the bus; either from boarding house to TZI or vice versa
+  passengers          ;; list containing agents which are currently on the bus
+  passengerStatus     ;; can be "full", "emtpy" or "free" depending on how many passengers are on the bus
+  boardingFinished?   ;; indicates wether boarding process is finished
+  waited              ;; seconds/ticks since bus stopped for boarding
+  toWait              ;; seconds/ticks that bus has to wait according to number of passenger getting on/off the bus
 ]
 
 nodes-own [
@@ -97,7 +98,7 @@ trams-own[
 
 tramriders-own [
   tr_home ;; Describes in which direction the home of the tramrider is located. Possible states: "north", "south"
-  movement_status ;; Describes the current movement of the tramrider. Possible states: "going to bus stop", "waiting_for_bus", "going to work", "working", "exiting bus"
+  movement_status ;; Describes the current movement of the tramrider. Possible states: "going to bus stop", "waiting_for_bus", "going to work", "working", "exiting bus", "on_bus"
   tr_ultimate_destination ;; Describes the ultimate destination the tramrider wants to reach. Possible states: "enterprise a", "enterprise b", enterprise c", "boarding house", "tram_ns", "tram_sn"
   tr_current_destination ;; Describes the current destination the tramrider wants to reach. Possible states are the bus stops, the workplace, the boarding house or the tram station
   tr_target ;; Describes which waypoint a tramrider is targeting in order to reach its destination
@@ -794,19 +795,19 @@ to setup-bus
     setxy 797 208
     set size 20
     set status "waiting"
-    set target one-of nodes with [name = "stop_tram"]
+    set target one-of nodes with [name = "bus_stop_tram"]
     set route routeTB
-    set BTcalced? false
+    set boardingFinished? false
     set toWait 0
     set waited 0
-    set passengers nobody
+    set passengers no-turtles
   ]
 end
 
 ;; sets up the nodes which enable the bus to move along the route
 to setup-bustrack
   let coords [[172 517] [166 384] [165 365] [415 346] [733 320] [723 216] [797 208]] ;; xy-coords of the nodes
-  let names ["stop_bhouse" "stop_enterpriseC" "turn_1" "stop_center" "turn_2" "turn_3" "stop_tram"] ;; names of the nodes
+  let names ["bus_stop_bhouse" "bus_stop_enterpriseC" "turn_1" "bus_stop_center" "turn_2" "turn_3" "bus_stop_tram"] ;; names of the nodes
   create-nodes 7 [
     set hidden? true ;; hide, because nodes are just locigal elements
     set shape "circle"
@@ -835,13 +836,13 @@ to setup-bustrack
   set routeBT [0 0 0 0 0 0 0] ;; fill lists with dummy values
   set routeTB [0 0 0 0 0 0 0]
   ;; replace dummy values in first route with nodes in right order
-  set routeBT replace-item 0 routeBT (one-of nodes with [name = "stop_bhouse"])
-  set routeBT replace-item 1 routeBT (one-of nodes with [name = "stop_enterpriseC"])
+  set routeBT replace-item 0 routeBT (one-of nodes with [name = "bus_stop_bhouse"])
+  set routeBT replace-item 1 routeBT (one-of nodes with [name = "bus_stop_enterpriseC"])
   set routeBT replace-item 2 routeBT (one-of nodes with [name = "turn_1"])
-  set routeBT replace-item 3 routeBT (one-of nodes with [name = "stop_center"])
+  set routeBT replace-item 3 routeBT (one-of nodes with [name = "bus_stop_center"])
   set routeBT replace-item 4 routeBT (one-of nodes with [name = "turn_2"])
   set routeBT replace-item 5 routeBT (one-of nodes with [name = "turn_3"])
-  set routeBT replace-item 6 routeBT (one-of nodes with [name = "stop_tram"])
+  set routeBT replace-item 6 routeBT (one-of nodes with [name = "bus_stop_tram"])
   ;; with routeBT complete setting up routeTB becomes easier
   let counter 6
   foreach routeBT [ x ->
@@ -894,8 +895,8 @@ end
 ;; bus behaviour while status is "boarding"
 to busBoard
   ask busses [
-    ifelse BTcalced? = false [
-      calcBoardingTime
+    ifelse boardingFinished? = false [
+      boardPassengers
     ]
     [ ;; only execute when boardingTime (toWait) is calculated
       ifelse waited < toWait [   ;; if boarding is not yet finished
@@ -911,14 +912,14 @@ to busBoard
         ]
         [                          ;; if it was the last stop, set status to "waiting" and update route list
           set status "waiting"
-          ifelse [name] of target = "stop_tram" [
+          ifelse [name] of target = "bus_stop_tram" [
             set route routeTB
           ]
           [
             set route routeBT
           ]
         ]
-        set BTcalced? false        ;; reset BTcalced as well as toWait and waited
+        set boardingFinished? false        ;; reset BTcalced as well as toWait and waited
         set waited 0
         set toWait 0
       ]
@@ -926,56 +927,118 @@ to busBoard
   ]
 end
 
+;; executed once at each busstop
 ;; calculates the time necessary for boarding (depending on how many passengers get on/off the bus)
-to calcBoardingTime
+;; interacts with passengers so they board/exit the bus
+to boardPassengers
   let boardingTime 0
   let currentStop [target] of self
   let waitingPatch patch-at 0 0
-  let passengersHopOn nobody
-  let passengersHopOff nobody
+  let possiblePassengers no-turtles
+  let dropouts no-turtles
   let remainingNodesOnRoute []
+  let callingBus self
+  checkPassengers
 
-  ;; add all remaining nodes of the route to the variable
+  show "=========================================="
+  show (word "boarding at " [name] of currentStop)
+  show "=========================================="
+
+  ;; add all remaining nodes of the route to the variable "remainingNodesOnRoute"
   foreach route [ x ->
-    if x != target [ ;; since target is yet set to the node where the bus is currently at; this one is excluded
+    if x != target [ ;; since target is yet set to the node where the bus is currently at, this one is excluded
       set remainingNodesOnRoute lput ([name] of x) remainingNodesOnRoute
     ]
   ]
 
-  ;; check if any possible passengers are waiting for the bus at this stop and add them to "passengersHopOn"
+  ;; check if any passengers are waiting for the bus at this stop and add them to "possiblePassengers"
   if (any? ((pedestrians-on waitingPatch) with [movement_status = "waiting_for_bus"])) or
      (any? ((tramriders-on waitingPatch) with [movement_status = "waiting_for_bus"])) [
-    show "entered waiting if passengersHopOn"
-    set passengersHopOn (turtle-set (pedestrians-on waitingPatch) with [movement_status = "waiting_for_bus"] (tramriders-on waitingPatch) with [movement_status = "waiting_for_bus"])
-  ]
-
-  ;; for each passenger that is waiting for the bus, check if the bus is going in the right direction
-  ;; for the passenger to reach its "exit_bus_stop"; if that is the case, add 1.5 seconds of boarding time
-  if passengersHopOn != nobody [
-    ask passengersHopOn [
-      if member? exit_bus_stop remainingNodesOnRoute [
-        set boardingTime boardingTime + 1.5
-      ]
-    ]
+    set possiblePassengers (turtle-set (pedestrians-on waitingPatch) with [movement_status = "waiting_for_bus"] (tramriders-on waitingPatch) with [movement_status = "waiting_for_bus"])
+    show (word count possiblePassengers " passanger(s) are waiting at this stop")
   ]
 
   ;; check the passenger agentset of the bus for passengers willig to get off the bus at the current stop
-  if [passengers] of self != nobody [
-    set passengersHopOff ([passengers] of self) with [exit_bus_stop = ([name] of currentStop)]
+  if passengers != no-turtles [
+    set dropouts ([passengers] of self) with [exit_bus_stop = ([name] of currentStop)]
+    show (word count dropouts " passanger(s) want to exit the bus at this stop")
   ]
 
-  ;; add 1.5 seconds of boarding time foreach passengerHopOff
-  if passengersHopOff != nobody [
-    set boardingTime boardingTime + ((count passengersHopOff) * 1.5)
+  ;; let passengers get off the bus
+  if dropouts != no-turtles [
+    show "hop off process"
+    ask dropouts [
+      set hidden? false
+      move-to one-of nodes with [name = ([exit_bus_stop] of myself)]
+      set movement_status "exiting_bus"
+      show (word "got off the bus " "(target was " [exit_bus_stop] of self)
+    ]
+    ;; update passenger list of the bus and add 1.5 seconds boarding time per exiting passenger
+    set passengers passengers with [exit_bus_stop != ([name] of currentStop)]
+    set boardingTime boardingTime + ((count dropouts) * 1.5)
+    show "hop off process finished"
   ]
-  show passengersHopOff
-  show passengersHopOn
-  show remainingNodesOnRoute
-  set toWait boardingTime ;; set toWait variable so bus waites for this amount of time
-  set BTcalced? true      ;; set BTcalced? to true so it's not calculated again
+
+  ;; let passengers board the bus
+  if possiblePassengers != no-turtles [
+    let newPassengers no-turtles
+    ;; filter those possiblePassengers whos target is on the current route of the bus
+    ask possiblePassengers [
+      ;; check if there is remaining space on the bus
+      if member? exit_bus_stop remainingNodesOnRoute [
+        set newPassengers (turtle-set newPassengers self) ;; add current agent to newPassenger agentset
+      ]
+    ]
+
+    ;; check if there is space for all newPassengers
+    if newPassengers != no-turtles [
+      show "hop on process"
+      ifelse (count newPassengers + count passengers) > 12 [ ;; if not let passengers enter the bus until its full
+        while [count passengers < 12] [
+          let boardingPassenger one-of newPassengers
+          ask boardingPassenger [
+            if movement_status != "on_bus" [ ;; check if this newPassenger is already on the bus
+              set hidden? true
+              set movement_status "on_bus"
+              set boardingTime boardingTime + 1.5
+              show "entered the bus"
+            ]
+          ]
+          set passengers (turtle-set passengers boardingPassenger)
+        ]
+      ]
+      [ ;; if there is enough space for all newPassengers let all of them enter the bus
+        ask newPassengers [
+          set hidden? true ;; hide passenger (since he is on the bus now) and update his status
+          set movement_status "on_bus"
+          set boardingTime boardingTime + 1.5
+          show "entered the bus"
+        ]
+        set passengers (turtle-set passengers newPassengers)
+      ]
+      show "hop on process finished"
+    ]
+  ]
+  show (word count passengers " passenger(s) are currently on the bus")
+  ;; at last update toWait attribute of the bus and set boardingFinished to true
+  set toWait boardingTime
+  set boardingFinished? true
 end
 
-
+;; sets the passengerStatus attribute the calling bus
+to checkPassengers
+  ifelse passengers = nobody [
+    set passengerStatus "empty"
+  ]
+  [
+    ifelse count passengers < 12 [
+      set passengerStatus "free"
+    ]
+    [
+      set passengerStatus "full"
+    ]
+  ]
+end
 
 
 
@@ -2538,7 +2601,7 @@ CHOOSER
 interval
 interval
 10 15 20
-2
+0
 
 TEXTBOX
 521
