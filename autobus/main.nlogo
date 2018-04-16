@@ -686,7 +686,7 @@ to setup-bus
     set boardingFinished? false
     set toWait 0
     set waited 0
-    set passengers nobody
+    set passengers no-turtles
   ]
 end
 
@@ -817,94 +817,98 @@ end
 ;; calculates the time necessary for boarding (depending on how many passengers get on/off the bus)
 ;; interacts with passengers so they board/exit the bus
 to boardPassengers
-  show "=========================================="
-  show "=========================================="
   let boardingTime 0
   let currentStop [target] of self
   let waitingPatch patch-at 0 0
-  let passengersHopOn nobody
-  let passengersHopOff nobody
+  let possiblePassengers no-turtles
+  let dropouts no-turtles
   let remainingNodesOnRoute []
+  let callingBus self
   checkPassengers
 
-  ;; add all remaining nodes of the route to the variable
+  show "=========================================="
+  show (word "boarding at " [name] of currentStop)
+  show "=========================================="
+
+  ;; add all remaining nodes of the route to the variable "remainingNodesOnRoute"
   foreach route [ x ->
-    if x != target [ ;; since target is yet set to the node where the bus is currently at; this one is excluded
+    if x != target [ ;; since target is yet set to the node where the bus is currently at, this one is excluded
       set remainingNodesOnRoute lput ([name] of x) remainingNodesOnRoute
     ]
   ]
 
-  ;; check if any possible passengers are waiting for the bus at this stop and add them to "passengersHopOn"
+  ;; check if any passengers are waiting for the bus at this stop and add them to "possiblePassengers"
   if (any? ((pedestrians-on waitingPatch) with [movement_status = "waiting_for_bus"])) or
      (any? ((tramriders-on waitingPatch) with [movement_status = "waiting_for_bus"])) [
-    set passengersHopOn (turtle-set (pedestrians-on waitingPatch) with [movement_status = "waiting_for_bus"] (tramriders-on waitingPatch) with [movement_status = "waiting_for_bus"])
-    show (word "entered waiting if passengersHopOn: pho is now " passengersHopOn)
-  ]
-
-  ;; for each passenger that is waiting for the bus, check if the bus is going in the right direction
-  ;; for the passenger to reach its "exit_bus_stop"; if that is the case, add 1.5 seconds of boarding time
-  if passengersHopOn != nobody [
-    ask passengersHopOn [
-      if member? exit_bus_stop remainingNodesOnRoute [
-        set boardingTime boardingTime + 1.5
-      ]
-    ]
+    set possiblePassengers (turtle-set (pedestrians-on waitingPatch) with [movement_status = "waiting_for_bus"] (tramriders-on waitingPatch) with [movement_status = "waiting_for_bus"])
+    show (word count possiblePassengers " passanger(s) are waiting at this stop")
   ]
 
   ;; check the passenger agentset of the bus for passengers willig to get off the bus at the current stop
-  if [passengerStatus] of self != "empty" [
-    set passengersHopOff ([passengers] of self) with [exit_bus_stop = ([name] of currentStop)]
+  if passengers != no-turtles [
+    set dropouts ([passengers] of self) with [exit_bus_stop = ([name] of currentStop)]
+    show (word count dropouts " passanger(s) want to exit the bus at this stop")
   ]
-
-  ;; add 1.5 seconds of boarding time foreach passengerHopOff
-  if passengersHopOff != nobody [
-    set boardingTime boardingTime + ((count passengersHopOff) * 1.5)
-  ]
-
 
   ;; let passengers get off the bus
-  if passengersHopOff != nobody [
-    ask passengersHopOff [
+  if dropouts != no-turtles [
+    show "hop off process"
+    ask dropouts [
       set hidden? false
-      move-to one-of nodes with [name = exit_bus_stop]
+      move-to one-of nodes with [name = ([exit_bus_stop] of myself)]
       set movement_status "exiting_bus"
-      show "passengers before exiting"
-      show passengers
-      set passengers passengers with [self != myself]
-      show "passengers after exiting"
-      show passengers
-      show (word self "left the bus")
+      show (word "got off the bus " "(target was " [exit_bus_stop] of self)
     ]
+    ;; update passenger list of the bus and add 1.5 seconds boarding time per exiting passenger
+    set passengers passengers with [exit_bus_stop != ([name] of currentStop)]
+    set boardingTime boardingTime + ((count dropouts) * 1.5)
+    show "hop off process finished"
   ]
 
-  let callingBus self
   ;; let passengers board the bus
-  if passengersHopOn != nobody [
-    let newPassengers 0
-    ask passengersHopOn [
-      if ([passengerStatus] of callingBus) = "free" [ ;; check if there is space for this passenger
-        ifelse newPassengers = 0 [
-          set newPassengers self
-        ]
-        [
-          set newPassengers (turtle-set newPassengers self) ;; add current agent to passenger agentset
-        ]
-        set hidden? true
-        set movement_status "on_bus"
-        show (word self "entered the bus")
+  if possiblePassengers != no-turtles [
+    let newPassengers no-turtles
+    ;; filter those possiblePassengers whos target is on the current route of the bus
+    ask possiblePassengers [
+      ;; check if there is remaining space on the bus
+      if member? exit_bus_stop remainingNodesOnRoute [
+        set newPassengers (turtle-set newPassengers self) ;; add current agent to newPassenger agentset
       ]
     ]
-    if newPassengers != 0 [
-      set passengers (turtle-set passengers newPassengers)
+
+    ;; check if there is space for all newPassengers
+    if newPassengers != no-turtles [
+      show "hop on process"
+      ifelse (count newPassengers + count passengers) > 12 [ ;; if not let passengers enter the bus until its full
+        while [count passengers < 12] [
+          let boardingPassenger one-of newPassengers
+          ask boardingPassenger [
+            if movement_status != "on_bus" [ ;; check if this newPassenger is already on the bus
+              set hidden? true
+              set movement_status "on_bus"
+              set boardingTime boardingTime + 1.5
+              show "entered the bus"
+            ]
+          ]
+          set passengers (turtle-set passengers boardingPassenger)
+        ]
+      ]
+      [ ;; if there is enough space for all newPassengers let all of them enter the bus
+        ask newPassengers [
+          set hidden? true ;; hide passenger (since he is on the bus now) and update his status
+          set movement_status "on_bus"
+          set boardingTime boardingTime + 1.5
+          show "entered the bus"
+        ]
+        set passengers (turtle-set passengers newPassengers)
+      ]
+      show "hop on process finished"
     ]
   ]
-
-  show remainingNodesOnRoute
-  show (word "passengers to hop off " passengersHopOff)
-  show (word "passengers to hop on " passengersHopOn)
-  show (word "boarding time " boardingTime)
-  set toWait boardingTime ;; set toWait variable so bus waites for this amount of time
-  set boardingFinished? true      ;; set boardingFinished? to true so it's not calculated again
+  show (word count passengers " passenger(s) are currently on the bus")
+  ;; at last update toWait attribute of the bus and set boardingFinished to true
+  set toWait boardingTime
+  set boardingFinished? true
 end
 
 ;; sets the passengerStatus attribute the calling bus
@@ -2790,7 +2794,7 @@ CHOOSER
 interval
 interval
 10 15 20
-2
+0
 
 TEXTBOX
 521
