@@ -8,6 +8,8 @@ globals [
   routeBT
   schedule
   max-bikers
+  max-cars
+  cars-spawn-points
   bikers-spawn-points
 
   tram_arrival_ns ;; Second of the arrival of a tram going from north to south
@@ -30,6 +32,7 @@ globals [
 ;; ordering of breed represents drawing order on map; breeds declared later overlap those declared earlier
 breed [nodes node] ;; nodes are agents representing the stops and turning points of the route the bus drives along
 breed [bikers biker]
+breed [cars car]
 breed [pedestrians pedestrian] ;; breed pedestrians
 breed [trams tram] ;; agents representing the trams
 breed [tramriders tramrider] ;; agents representing the tramriders
@@ -73,6 +76,11 @@ nodes-own [
 ]
 
 bikers-own [
+  velocity
+  time-alive
+]
+
+cars-own [
   velocity
   time-alive
 ]
@@ -125,6 +133,7 @@ to setup
   setup-bus
   setup-schedule
   setup-bikers
+  setup-cars
   setup-pedestrians
   setup-tr_nodes
 
@@ -225,6 +234,7 @@ to go
   ]
   process-bus
   process-bikers
+  process-cars
   spawn-pedestrians
   move-pedestrians
   check-tram
@@ -242,7 +252,7 @@ end
 ;; setup global variables
 to setup-bikers
   if (max-bikers = 0) [ set max-bikers 30] ;; set only if not already set via slider
-  set bikers-spawn-points [[278 611] [17 534] [384 44] [615 21] [884 302]]
+  set bikers-spawn-points [[181 623] [231 358] [831 204]]
 end
 
 ;; used in go
@@ -261,13 +271,19 @@ to bikers-spawn
     if (count bikers < max-bikers and (ticks mod 60) = 0) [  ;; spawn biker every minute, not more than bikers-max
       create-bikers 1 [
         setxy (item 0 n) (item 1 n)
-        set size 10
-        set velocity 5
+        set shape "bike"
+        set size 20
+        set velocity 4
         set time-alive 0
         set color red
       ]
     ]
   ]
+end
+
+to-report valid-bike-patch [ patch-to-check ]
+  if (patch-to-check = nobody) [ report false ]
+  report ([street] of patch-to-check) = 1 or ([boardwalk] of patch-to-check) = 1 or ([misc] of patch-to-check) = 11 or ([misc] of patch-to-check) = 12 or ([misc] of patch-to-check) = 4
 end
 
 ;; move one biker. seeks possible direction to move
@@ -276,15 +292,18 @@ to biker-move
   let dest patch-at-heading-and-distance heading velocity
 
   ;; loop looking for turn angle
-  while [turn < 360 and (dest = nobody or ([street] of dest) != 1)] [
+  while [turn < 360 and not valid-bike-patch dest] [
     ifelse (turn >= 0) [set turn ((turn + 1) * -1)] [set turn (turn * -1)]
     set dest patch-at-heading-and-distance (heading + turn) velocity
   ]
 
-  ;; turn and move only if loop successfull
-  if (not (turn >= 360)) [
+  ;; turn and move only if loop successfull and no passenger in front
+  ifelse (not (turn >= 360)) [
     set heading ( heading + turn )
     fd velocity
+  ] [
+    show "agent is stuck and has to die"
+    die ;; die if stuck
   ]
 end
 
@@ -299,7 +318,101 @@ end
 ;; kill bikers near spawn points
 to bikers-kill
   ask bikers [
-    foreach bikers-spawn-points [
+    foreach cars-spawn-points [
+      n ->
+      ;; die if close to spawn point and lived longer then a minute
+      if (time-alive > 60 and (distancexy (item 0 n) (item 1 n) < 20)) [die]
+    ]
+  ]
+end
+
+;; ===== CARS IMPLEMENTATION =====
+
+;; === public ===
+
+;; used in setup
+;; setup global variables
+to setup-cars
+  if (max-cars = 0) [ set max-cars 30] ;; set only if not already set via slider
+  set cars-spawn-points [[278 611] [17 534] [384 44] [615 21] [884 302]]
+end
+
+;; used in go
+to process-cars
+  cars-spawn
+  cars-move
+  cars-kill
+end
+
+;; === private ===
+
+;; spawn car on every spawn-poin
+to cars-spawn
+  foreach cars-spawn-points [
+    n ->
+    if (count cars < max-cars and (ticks mod 60) = 0) [  ;; spawn biker every minute, not more than bikers-max
+      create-cars 1 [
+        setxy (item 0 n) (item 1 n)
+        set shape "car"
+        set size 20
+        set velocity 7
+        set time-alive 0
+        set color red
+      ]
+    ]
+  ]
+end
+
+to-report valid-street [ patch-to-check ]
+  report patch-to-check != nobody and ([street] of patch-to-check) = 1 and ([boardwalk] of patch-to-check != 1)
+end
+
+to-report save-to-move [ moving-car ]
+  let turtle-in-sight false
+
+  ask moving-car [
+    ask turtles in-cone (velocity * 5) 10 [
+      if (not is-car? self and not is-node? self and not is-tr_node? self) [
+        set turtle-in-sight true
+      ]
+    ]
+  ]
+  report not turtle-in-sight
+end
+
+;; move one car. seeks possible direction to move
+to car-move
+  let turn 0
+  let dest patch-at-heading-and-distance heading velocity
+
+  ;; loop looking for turn angle
+  while [turn < 360 and not valid-street dest] [
+    ifelse (turn >= 0) [set turn ((turn + 1) * -1)] [set turn (turn * -1)]
+    set dest patch-at-heading-and-distance (heading + turn) velocity
+  ]
+
+  ;; turn and move only if loop successfull and no passenger in front
+  ifelse (not (turn >= 360)) [
+    set heading ( heading + turn )
+    if (save-to-move self) [ fd velocity ]
+  ] [
+    show "agent is stuck and has to die"
+    die
+  ] ;; die if stuck
+end
+
+;; move all cars and increase live counter
+to cars-move
+  ask cars [
+    car-move
+    set time-alive time-alive + 1
+  ]
+end
+
+;; kill cars near spawn points
+to cars-kill
+  ask cars [
+    foreach cars-spawn-points [
       n ->
       ;; die if close to spawn point and lived longer then a minute
       if (time-alive > 60 and (distancexy (item 0 n) (item 1 n) < 20)) [die]
@@ -2512,6 +2625,22 @@ Rectangle -16777216 true false 60 75 105 135
 Rectangle -16777216 true false 195 75 240 135
 Rectangle -16777216 false false 120 90 180 210
 
+bike
+false
+0
+Circle -7500403 true true 135 60 30
+Polygon -7500403 true true 135 90 135 90 120 105 120 120 135 105 135 150 120 195 135 195 150 150 165 195 180 195 165 150 165 105 180 120 180 105 165 90 150 75 150 75
+Circle -7500403 true true 159 174 42
+Circle -7500403 true true 99 174 42
+Line -16777216 false 120 180 120 210
+Line -16777216 false 105 195 135 195
+Line -16777216 false 105 180 135 210
+Line -16777216 false 135 180 105 210
+Line -16777216 false 165 180 195 210
+Line -16777216 false 195 180 165 210
+Line -16777216 false 165 195 195 195
+Line -16777216 false 180 180 180 210
+
 box
 false
 0
@@ -2542,6 +2671,23 @@ Polygon -16777216 true false 150 255 135 225 120 150 135 120 150 105 165 120 180
 Circle -16777216 true false 135 90 30
 Line -16777216 false 150 105 195 60
 Line -16777216 false 150 105 105 60
+
+car
+true
+0
+Polygon -7500403 true true 165 285 120 270 135 60 165 15
+Circle -16777216 true false 135 45 60
+Circle -16777216 true false 135 210 60
+Circle -7500403 true true 150 225 28
+Circle -7500403 true true 223 90 2
+Rectangle -7500403 false true 90 255 90 255
+Circle -7500403 true true 150 60 30
+Polygon -7500403 true true 135 45 135 60 114 108 105 210 135 255 135 225 135 75
+Polygon -16777216 true false 132 74 116 108 132 111 132 78
+Polygon -7500403 true true 110 268 126 266 127 260 109 264
+Polygon -7500403 true true 155 273
+Polygon -7500403 true true 113 260 106 273 103 271 114 252
+Polygon -16777216 true false 116 110 110 175 130 178 133 115 122 112
 
 circle
 false
