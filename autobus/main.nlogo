@@ -1029,13 +1029,16 @@ end
 to checkPassengers
   ifelse passengers = nobody [
     set passengerStatus "empty"
+    set color white
   ]
   [
     ifelse count passengers < 12 [
       set passengerStatus "free"
+      set color green
     ]
     [
       set passengerStatus "full"
+      set color red
     ]
   ]
 end
