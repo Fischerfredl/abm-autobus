@@ -1869,6 +1869,8 @@ to move-tramriders
     check-tramriders-inter-and-enterprise-waypoints
     ;; Going to tram
     check-tramriders-waypoints-going-to-tram
+    ;; Getting off the bus
+    tramriders-get-off-bus
 
     ;; The tramriders are working when they reach their Enterprise
     tramriders-work
@@ -2322,6 +2324,67 @@ to check-tramriders-waypoints-going-to-tram
   ]
 end
 
+to tramriders-get-off-bus
+  if movement_status = "exiting_bus" [
+    ;; Approaching their ultimate destination after leaving the bus
+    set tr_current_destination tr_ultimate_destination
+    ;; To work:
+    ;; Send the employees to the next waypoint of the route after leaving the bus
+    ;; Enterprise A
+    if tr_ultimate_destination = "enterprise a" [
+      ;; Set Movement status to "going to work"
+      set movement_status "going to work"
+      ;; Employees going to Enterprise A can exit the bus at two different stop. The new next waypoint is based on where they got out of thebus
+      if exit_bus_stop = "bus_stop_center" [
+        ;; Set next waypoint
+        set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint6"] face tr_target]
+      if exit_bus_stop = "bus_stop_enterpriseC" [
+        ;; Set next waypoint
+        set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint4"] face tr_target]
+    ]
+    ;; Enterprise B
+    if tr_ultimate_destination = "enterprise b" [
+      ;; Set Movement status to "going to work"
+      set movement_status "going to work"
+      ;; Set next waypoint
+      set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint4"] face tr_target
+    ]
+    ;; Enterprise C
+    if tr_ultimate_destination = "enterprise c" [
+      set movement_status "going to work"
+      ;; Set next waypoint
+      set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint4"] face tr_target
+    ]
+    ;; Boarding House
+    if tr_ultimate_destination = "boarding house" [
+      ;; Set Movement status to "going to work"
+      set movement_status "going to work"
+      ;; Set next waypoint
+      set tr_target one-of tr_nodes with [tr_n_name = "inter_r1bh_waypoint2"] face tr_target
+    ]
+    ;; To Tram
+    ;; Send the employees to the next waypoint of the route after leaving the bus
+    ;; Direction: Haunstetten
+    if tr_ultimate_destination = "tram_ns" [
+      ;; Set Movement status to "going to tram"
+      set movement_status "going to tram"
+      ;; Set next waypoint
+      set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"] face target
+    ]
+    ;; Direction: Stadtbergen
+    if tr_ultimate_destination = "tram_sn" [
+      ;; Set Movement status to "going to tram"
+      set movement_status "going to tram"
+      ;; Set next waypoint
+      set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"] face target
+    ]
+  ]
+
+
+
+
+end
+
 
 to tramriders-work
 
@@ -2411,9 +2474,6 @@ end
 
 
 to check-collision
-  ;; Trams general
-  if any? trams-on patch-ahead 1
-    [set tr_stop true]
 
   ;; Tram-crossing for sn tramdrivers wanting to leave the tram station
   if tr_current_destination = "bus_stop_tram" and xcor = 852 and ycor = 200 [
