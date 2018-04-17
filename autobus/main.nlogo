@@ -11,6 +11,12 @@ globals [
   max-cars
   cars-spawn-points
   bikers-spawn-points
+  dropoff_total
+  dropoff_bhouse
+  dropoff_enterpriseC
+  dropoff_center
+  dropoff_tram
+  current_passengers
 
   tram_arrival_ns ;; Second of the arrival of a tram going from north to south
   tram_arrival_sn ;; Second of the arrival of a tram going from south to north
@@ -240,6 +246,8 @@ to go
   move-pedestrians
   check-tram
   move-tramriders
+  updateCurrentPassengers
+  update-plots
   tick
 end
 
@@ -875,12 +883,7 @@ to process-bus
       ;; if time is between 5:30 and 21:00 and bus must drive due to schedule; seconds = 0 necessary so that
       ;; this block is only executed once per "schedule time"
       if (total_minutes >= 330) and (total_minutes <= 1260) and (member? time schedule) and seconds = 0 [
-        ifelse count busses-at 0 0 > 1 and count ((busses-at 0 0) with [status = "boarding"]) = 1 [ ;; if more than one bus is at this stop keep own status at "waiting"
-          set status "waiting"
-        ]
-        [ ;; else set status of this bus to boarding
-          set status "boarding"
-        ]
+        set status "boarding"
       ]
     ]
   ]
@@ -954,6 +957,7 @@ to boardPassengers
   let currentStop [target] of self
   let waitingPatch patch-at 0 0
   let possiblePassengers no-turtles
+  let newPassengers no-turtles
   let dropouts no-turtles
   let remainingNodesOnRoute []
   let callingBus self
@@ -1000,7 +1004,6 @@ to boardPassengers
 
   ;; let passengers board the bus
   if possiblePassengers != no-turtles [
-    let newPassengers no-turtles
     ;; filter those possiblePassengers whos target is on the current route of the bus
     ask possiblePassengers [
       ;; check if there is remaining space on the bus
@@ -1042,11 +1045,34 @@ to boardPassengers
   ;; at last update toWait attribute of the bus and set boardingFinished to true
   set toWait boardingTime
   set boardingFinished? true
+  checkPassengers ;; update color and passenger status of the bus
+
+  set dropoff_total dropoff_total + (count dropouts)
+  if [name] of currentStop = "bus_stop_bhouse" [
+    set dropoff_bhouse dropoff_bhouse + (count dropouts)
+  ]
+  if [name] of currentStop = "bus_stop_enterpriseC" [
+    set dropoff_enterpriseC dropoff_enterpriseC + (count dropouts)
+  ]
+  if [name] of currentStop = "bus_stop_center" [
+    set dropoff_center dropoff_center + (count dropouts)
+  ]
+  if [name] of currentStop = "bus_stop_tram" [
+    set dropoff_tram dropoff_tram + (count dropouts)
+  ]
+end
+
+to updateCurrentPassengers
+  let curPas 0
+  ask busses [
+    set curPas curPas + (count passengers)
+  ]
+  set current_passengers curPas
 end
 
 ;; sets the passengerStatus attribute the calling bus
 to checkPassengers
-  ifelse passengers = nobody [
+  ifelse passengers = no-turtles [
     set passengerStatus "empty"
     set color white
   ]
@@ -2724,6 +2750,79 @@ number-of-busses
 number-of-busses
 1 2 3
 2
+
+MONITOR
+932
+10
+1034
+55
+NIL
+dropoff_bhouse
+0
+1
+11
+
+MONITOR
+932
+57
+1058
+102
+NIL
+dropoff_enterpriseC
+0
+1
+11
+
+MONITOR
+933
+151
+1020
+196
+NIL
+dropoff_tram
+0
+1
+11
+
+MONITOR
+932
+104
+1029
+149
+NIL
+dropoff_center
+17
+1
+11
+
+MONITOR
+933
+198
+1020
+243
+NIL
+dropoff_total
+0
+1
+11
+
+PLOT
+1044
+10
+1244
+160
+current_passengers
+time
+pasengers
+0.0
+0.0
+0.0
+36.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot current_passengers"
 
 @#$#@#$#@
 ## WHAT IS IT?
