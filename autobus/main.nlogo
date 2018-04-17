@@ -789,10 +789,10 @@ end
 ;; creates the bus instance and sets its initial parameter values
 to setup-bus
   setup-bustrack
-  create-busses 1 [
+  ;; create busses depending on what the user selected
+  create-busses number-of-busses [
     set shape "autobus"
     set color white
-    setxy 797 208
     set size 20
     set status "waiting"
     set target one-of nodes with [name = "bus_stop_tram"]
@@ -801,6 +801,15 @@ to setup-bus
     set toWait 0
     set waited 0
     set passengers no-turtles
+    move-to target
+  ]
+  ;; if user selected 2 or 3 busses, place one of them at the boarding house station
+  if count busses > 1 [
+    ask one-of busses [
+      set target one-of nodes with [name = "bus_stop_bhouse"]
+      set route routeBT
+      move-to target
+    ]
   ]
 end
 
@@ -855,17 +864,23 @@ end
 to process-bus
   ask busses [
     ifelse status != "waiting" [ ;; if status is not waiting behave depending on status
-     if status = "driving" [
+      if status = "driving" [
         busDrive
       ]
       if status = "boarding" [
         busBoard
       ]
     ]
-    [                           ;; if bus is waiting, watch the time and set status to "boarding" if bus must drive due to schedule
-      ;; if time is between 5:30 and 21:00 and bus must drive due to schedule
-      if (total_minutes >= 330) and (total_minutes <= 1260) and (member? time schedule) [
-        set status "boarding"
+    [ ;; if bus is waiting, watch the time and set status to "boarding" if bus must drive due to schedule
+      ;; if time is between 5:30 and 21:00 and bus must drive due to schedule; seconds = 0 necessary so that
+      ;; this block is only executed once per "schedule time"
+      if (total_minutes >= 330) and (total_minutes <= 1260) and (member? time schedule) and seconds = 0 [
+        ifelse count busses-at 0 0 > 1 and count ((busses-at 0 0) with [status = "boarding"]) = 1 [ ;; if more than one bus is at this stop keep own status at "waiting"
+          set status "waiting"
+        ]
+        [ ;; else set status of this bus to boarding
+          set status "boarding"
+        ]
       ]
     ]
   ]
@@ -874,20 +889,22 @@ end
 ;; bus behaviour while status is "driving"
 to busDrive
   ask busses [
-    ifelse distance target <= 3 [               ;; check if bus is near a node and - if yes - move it to this node
-      face target
-      move-to target
-      ifelse [busstop?] of target = true [      ;; check if reached node is a busstop
-        set status "boarding"                   ;; if so, set status to "boarding"
+    if status = "driving" [
+      ifelse distance target <= 3 [               ;; check if bus is near a node and - if yes - move it to this node
+        face target
+        move-to target
+        ifelse [busstop?] of target = true [      ;; check if reached node is a busstop
+          set status "boarding"                   ;; if so, set status to "boarding"
+        ]
+        [
+          set target item 0 route                 ;; if node is not a bus stop set new target and update route list and keep status "driving"
+          set route remove-item 0 route
+        ]
       ]
-      [
-        set target item 0 route                 ;; if node is not a bus stop set new target and update route list and keep status "driving"
-        set route remove-item 0 route
+      [                                           ;; if bus is not near a node, just move it with 12 km/h (3 m/s) towards the next node (target)
+        face target
+        fd 3
       ]
-    ]
-    [                                           ;; if bus is not near a node, just move it with 12 km/h (3 m/s) towards the next node (target)
-      face target
-      fd 3
     ]
   ]
 end
@@ -895,33 +912,35 @@ end
 ;; bus behaviour while status is "boarding"
 to busBoard
   ask busses [
-    ifelse boardingFinished? = false [
-      boardPassengers
-    ]
-    [ ;; only execute when boardingTime (toWait) is calculated
-      ifelse waited < toWait [   ;; if boarding is not yet finished
-        set waited waited + 1    ;; add 1 second to waited
+    if status = "boarding" [
+      ifelse boardingFinished? = false [
+        boardPassengers
       ]
-      [                          ;; if boarding time is finished
-        set waited 0
-        ;; check if this was the last stop on the route
-        ifelse length route != 0 [ ;; if not, set status to "driving", set new target and update route list
-          set target item 0 route
-          set route remove-item 0 route
-          set status "driving"
+      [ ;; only execute when boardingTime (toWait) is calculated
+        ifelse waited < toWait [   ;; if boarding is not yet finished
+          set waited waited + 1    ;; add 1 second to waited
         ]
-        [                          ;; if it was the last stop, set status to "waiting" and update route list
-          set status "waiting"
-          ifelse [name] of target = "bus_stop_tram" [
-            set route routeTB
+        [                          ;; if boarding time is finished
+          set waited 0
+          ;; check if this was the last stop on the route
+          ifelse length route != 0 [ ;; if not, set status to "driving", set new target and update route list
+            set target item 0 route
+            set route remove-item 0 route
+            set status "driving"
           ]
-          [
-            set route routeBT
+          [                          ;; if it was the last stop, set status to "waiting" and update route list
+            set status "waiting"
+            ifelse [name] of target = "bus_stop_tram" [
+              set route routeTB
+            ]
+            [
+              set route routeBT
+            ]
           ]
+          set boardingFinished? false        ;; reset BTcalced as well as toWait and waited
+          set waited 0
+          set toWait 0
         ]
-        set boardingFinished? false        ;; reset BTcalced as well as toWait and waited
-        set waited 0
-        set toWait 0
       ]
     ]
   ]
@@ -971,7 +990,7 @@ to boardPassengers
       set hidden? false
       move-to one-of nodes with [name = ([exit_bus_stop] of myself)]
       set movement_status "exiting_bus"
-      show (word "got off the bus " "(target was " [exit_bus_stop] of self)
+      show (word "got off the bus " "(target was " [exit_bus_stop] of self ")")
     ]
     ;; update passenger list of the bus and add 1.5 seconds boarding time per exiting passenger
     set passengers passengers with [exit_bus_stop != ([name] of currentStop)]
@@ -2695,6 +2714,16 @@ tramriders with [tr_current_destination = \"tram_sn\" and xcor = 830 and ycor = 
 17
 1
 11
+
+CHOOSER
+369
+113
+507
+158
+number-of-busses
+number-of-busses
+1 2 3
+2
 
 @#$#@#$#@
 ## WHAT IS IT?
