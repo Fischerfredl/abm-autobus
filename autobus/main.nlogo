@@ -1546,7 +1546,7 @@ end
 
 to tramrider-spawning-process
 
-;; Setting the cosmetics
+        ;; Setting the cosmetics
         set shape "person"
         set color yellow
         set size 10
@@ -1588,12 +1588,18 @@ to tramrider-spawning-process
         ;; Setting the waiting time to 0
         set tr_waiting_time 0
         ;; Setting the ragelimt based on probability
-        ifelse random 100 > 20
-          ;; The Maximum waiting time for the bus is 5 Minutes
-          [set tr_ragelimit random 300]
-          ;; 20% of people don't even want to intend the bus
-          [set tr_ragelimit 0]
-
+        set tr_random_val random 100
+        ;; 10% of people don't even want to intend the bus
+        if tr_random_val <= 10 [set tr_ragelimit 0]
+        ;; The next 10% of people wait 5 minutes for the bus at maximum. 5 minutes = 300 seconds
+        ;; The variance of 20 seconds is in the code for better visualization of the tramriders, so that they don't all go in the same second
+        if tr_random_val > 10 and tr_random_val <= 20 [set tr_ragelimit (290 + random 20)]
+        ;; The next 20% of people wait 10 minutes for the bus at maximum
+        if tr_random_val > 20 and tr_random_val <= 40 [set tr_ragelimit (590 + random 20)]
+        ;; The next 40% of people wait 15 minutes for the bus at maximum
+        if tr_random_val > 40 and tr_random_val <= 80 [set tr_ragelimit (890 + random 20)]
+        ;; The last 20% of people wait 20 minutes for the bus at maximum
+        if tr_random_val > 80 [set tr_ragelimit (1190 + random 20)]
 end
 
 
