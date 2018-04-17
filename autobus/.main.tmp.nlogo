@@ -2410,10 +2410,10 @@ end
 
 
 
-to check-collision
+;to check-collision
   ;; Trams general
-;  if any? trams-on patch-ahead 1
-;    [set tr_stop true]
+  if any? trams-on patch-ahead 1
+    [set tr_stop true]
 
   ;; Tram-crossing for sn tramdrivers wanting to leave the tram station
   if tr_current_destination = "bus_stop_tram" and xcor = 852 and ycor = 200 [
