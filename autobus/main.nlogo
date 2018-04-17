@@ -27,6 +27,8 @@ globals [
 
   distance_to_pedestrian ;distance of a bus stop to a pedestrian
   rand_pedestrian ;random number to spawn different pedestrians
+
+  rush-hour-factor
 ]
 
 ;; ordering of breed represents drawing order on map; breeds declared later overlap those declared earlier
@@ -135,6 +137,7 @@ to setup
   setup-schedule
   setup-bikers
   setup-cars
+  setup-rush-hour-factor
   setup-pedestrians
   setup-tr_nodes
 
@@ -236,6 +239,7 @@ to go
   process-bus
   process-bikers
   process-cars
+  process-rush-hour-factor
   spawn-pedestrians
   move-pedestrians
   check-tram
@@ -421,6 +425,32 @@ to cars-kill
   ]
 end
 
+
+;; ===== RUSH-HOUR-FACTOR =====
+
+to setup-rush-hour-factor
+  set rush-hour-factor 0.1
+end
+
+to process-rush-hour-factor
+  if (time = "05:30") [set rush-hour-factor 0.3]
+  if (time = "06:00") [set rush-hour-factor 0.8]
+  if (time = "07:00") [set rush-hour-factor 1.0]
+  if (time = "08:00") [set rush-hour-factor 0.6]
+  if (time = "09:00") [set rush-hour-factor 0.4]
+  if (time = "10:00") [set rush-hour-factor 0.2]
+  if (time = "11:00") [set rush-hour-factor 0.2]
+  if (time = "12:00") [set rush-hour-factor 0.5]
+  if (time = "13:00") [set rush-hour-factor 0.3]
+  if (time = "14:00") [set rush-hour-factor 0.2]
+  if (time = "15:00") [set rush-hour-factor 0.2]
+  if (time = "16:00") [set rush-hour-factor 0.3]
+  if (time = "17:00") [set rush-hour-factor 0.4]
+  if (time = "18:00") [set rush-hour-factor 0.5]
+  if (time = "19:00") [set rush-hour-factor 0.2]
+  if (time = "20:00") [set rush-hour-factor 0.2]
+  if (time = "21:00") [set rush-hour-factor 0.1]
+end
 
 ;; ===== Pedestrian IMPLEMENTATION =====
 
