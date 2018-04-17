@@ -2369,14 +2369,14 @@ to tramriders-get-off-bus
       ;; Set Movement status to "going to tram"
       set movement_status "going to tram"
       ;; Set next waypoint
-      set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"] face target
+      set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"] face tr_target
     ]
     ;; Direction: Stadtbergen
     if tr_ultimate_destination = "tram_sn" [
       ;; Set Movement status to "going to tram"
       set movement_status "going to tram"
       ;; Set next waypoint
-      set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"] face target
+      set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"] face tr_target
     ]
   ]
 
@@ -2474,6 +2474,9 @@ end
 
 
 to check-collision
+  ;; Trams general
+;  if any? trams-on patch-ahead 1
+;    [set tr_stop true]
 
   ;; Tram-crossing for sn tramdrivers wanting to leave the tram station
   if tr_current_destination = "bus_stop_tram" and xcor = 852 and ycor = 200 [
