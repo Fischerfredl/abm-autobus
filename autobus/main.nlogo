@@ -16,6 +16,11 @@ globals [
   dropoff_enterpriseC
   dropoff_center
   dropoff_tram
+  getin_total
+  getin_bhouse
+  getin_enterpriseC
+  getin_center
+  getin_tram
   current_passengers
 
   tram_arrival_ns ;; Second of the arrival of a tram going from north to south
@@ -956,9 +961,10 @@ to boardPassengers
   let boardingTime 0
   let currentStop [target] of self
   let waitingPatch patch-at 0 0
-  let possiblePassengers no-turtles
-  let newPassengers no-turtles
-  let dropouts no-turtles
+  let possiblePassengers no-turtles ;; passengers waiting for the bus
+  let newPassengers no-turtles ;; passengers that intend to board the bus, because it is going in the right direction for them
+  let passengersBoarded 0 ;; number of passengers that actually boarded the bus
+  let dropouts no-turtles ;; passengers that want to get off the bus
   let remainingNodesOnRoute []
   let callingBus self
   checkPassengers
@@ -1024,6 +1030,7 @@ to boardPassengers
               set movement_status "on_bus"
               set boardingTime boardingTime + 1.5
               show "entered the bus"
+              set passengersBoarded passengersBoarded + 1
             ]
           ]
           set passengers (turtle-set passengers boardingPassenger)
@@ -1035,6 +1042,7 @@ to boardPassengers
           set movement_status "on_bus"
           set boardingTime boardingTime + 1.5
           show "entered the bus"
+          set passengersBoarded passengersBoarded + 1
         ]
         set passengers (turtle-set passengers newPassengers)
       ]
@@ -1048,17 +1056,22 @@ to boardPassengers
   checkPassengers ;; update color and passenger status of the bus
 
   set dropoff_total dropoff_total + (count dropouts)
+  set getin_total getin_total + passengersBoarded
   if [name] of currentStop = "bus_stop_bhouse" [
     set dropoff_bhouse dropoff_bhouse + (count dropouts)
+    set getin_bhouse getin_bhouse + passengersBoarded
   ]
   if [name] of currentStop = "bus_stop_enterpriseC" [
     set dropoff_enterpriseC dropoff_enterpriseC + (count dropouts)
+    set getin_enterpriseC getin_enterpriseC + passengersBoarded
   ]
   if [name] of currentStop = "bus_stop_center" [
     set dropoff_center dropoff_center + (count dropouts)
+    set getin_center getin_center + passengersBoarded
   ]
   if [name] of currentStop = "bus_stop_tram" [
     set dropoff_tram dropoff_tram + (count dropouts)
+    set getin_tram getin_tram + passengersBoarded
   ]
 end
 
@@ -2656,10 +2669,10 @@ time
 11
 
 MONITOR
-1003
-350
-1190
-395
+1058
+327
+1245
+372
 count_employees_enterprise_a
 count_employees_enterprise_a
 17
@@ -2667,10 +2680,10 @@ count_employees_enterprise_a
 11
 
 MONITOR
-1003
-396
-1190
-441
+1058
+373
+1245
+418
 NIL
 count_employees_enterprise_b
 17
@@ -2678,10 +2691,10 @@ count_employees_enterprise_b
 11
 
 MONITOR
-1003
-442
-1190
-487
+1058
+419
+1245
+464
 NIL
 count_employees_enterprise_c
 17
@@ -2689,10 +2702,10 @@ count_employees_enterprise_c
 11
 
 MONITOR
-1003
-489
-1190
-534
+1058
+466
+1245
+511
 NIL
 count_visitors_bhouse
 17
@@ -2823,6 +2836,61 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "plot current_passengers"
+
+MONITOR
+933
+272
+1021
+317
+NIL
+getin_bhouse
+0
+1
+11
+
+MONITOR
+934
+321
+1046
+366
+NIL
+getin_enterpriseC
+0
+1
+11
+
+MONITOR
+934
+368
+1017
+413
+NIL
+getin_center
+0
+1
+11
+
+MONITOR
+935
+416
+1008
+461
+NIL
+getin_tram
+17
+1
+11
+
+MONITOR
+935
+463
+1008
+508
+NIL
+getin_total
+0
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
