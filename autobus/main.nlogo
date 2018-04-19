@@ -284,17 +284,19 @@ end
 
 ;; spawn bikers on every spawn-poin
 to bikers-spawn
-  foreach bikers-spawn-points [
-    n ->
-    if (count bikers < max-bikers and (ticks mod 60) = 0) [  ;; spawn biker every minute, not more than bikers-max
-      create-bikers 1 [
-        setxy (item 0 n) (item 1 n)
-        set shape "bike"
-        set size 20
-        set velocity 4
-        set time-alive 0
-        set color red
-      ]
+  set max-bikers (rush-hour-factor * 30)
+
+  while [count bikers < max-bikers] [
+    foreach bikers-spawn-points [
+      n ->
+        create-bikers 1 [
+          setxy (item 0 n) (item 1 n)
+          set shape "bike"
+          set size 20
+          set velocity ((random-float 1) * 2 + 3) ;; random number between 3 (10.8km/h) and 5 (18km/h)
+          set time-alive 0
+          set color red
+        ]
     ]
   ]
 end
@@ -336,7 +338,7 @@ end
 ;; kill bikers near spawn points
 to bikers-kill
   ask bikers [
-    foreach cars-spawn-points [
+    foreach cars-spawn-points [ ;; sic!
       n ->
       ;; die if close to spawn point and lived longer then a minute
       if (time-alive > 60 and (distancexy (item 0 n) (item 1 n) < 20)) [die]
@@ -352,7 +354,7 @@ end
 ;; setup global variables
 to setup-cars
   if (max-cars = 0) [ set max-cars 30] ;; set only if not already set via slider
-  set cars-spawn-points [[278 611] [17 534] [384 44] [615 21] [884 302]]
+  set cars-spawn-points [[278 611] [16 530] [384 44] [615 21] [884 302]]
 end
 
 ;; used in go
@@ -366,18 +368,20 @@ end
 
 ;; spawn car on every spawn-poin
 to cars-spawn
-  foreach cars-spawn-points [
-    n ->
-    if (count cars < max-cars and (ticks mod 60) = 0) [  ;; spawn biker every minute, not more than bikers-max
-      create-cars 1 [
-        setxy (item 0 n) (item 1 n)
-        set shape "car"
-        set size 20
-        set velocity 7
-        set time-alive 0
-        set color red
+    set max-cars (rush-hour-factor * 30)
+
+    while [count cars < max-cars] [
+      foreach shuffle cars-spawn-points [
+        n ->
+        create-cars 1 [
+          setxy (item 0 n) (item 1 n)
+          set shape "car"
+          set size 20
+          set velocity ((random-float 1) * 3 + 8) ;; random number between 8 (28.8km/h) and 11 (39.6km/h)
+          set time-alive 0
+          set color red
+        ]
       ]
-    ]
   ]
 end
 
@@ -452,14 +456,14 @@ to process-rush-hour-factor
   if (time = "08:00") [set rush-hour-factor 0.6]
   if (time = "09:00") [set rush-hour-factor 0.4]
   if (time = "10:00") [set rush-hour-factor 0.2]
-  if (time = "11:00") [set rush-hour-factor 0.2]
-  if (time = "12:00") [set rush-hour-factor 0.5]
-  if (time = "13:00") [set rush-hour-factor 0.3]
-  if (time = "14:00") [set rush-hour-factor 0.2]
+  if (time = "11:00") [set rush-hour-factor 0.1]
+  if (time = "12:00") [set rush-hour-factor 0.3]
+  if (time = "13:00") [set rush-hour-factor 0.2]
+  if (time = "14:00") [set rush-hour-factor 0.1]
   if (time = "15:00") [set rush-hour-factor 0.2]
-  if (time = "16:00") [set rush-hour-factor 0.3]
-  if (time = "17:00") [set rush-hour-factor 0.4]
-  if (time = "18:00") [set rush-hour-factor 0.5]
+  if (time = "16:00") [set rush-hour-factor 0.4]
+  if (time = "17:00") [set rush-hour-factor 0.7]
+  if (time = "18:00") [set rush-hour-factor 0.4]
   if (time = "19:00") [set rush-hour-factor 0.2]
   if (time = "20:00") [set rush-hour-factor 0.2]
   if (time = "21:00") [set rush-hour-factor 0.1]
@@ -2921,6 +2925,35 @@ getin_total
 0
 1
 11
+
+MONITOR
+1289
+14
+1364
+59
+car-count
+count cars
+0
+1
+11
+
+PLOT
+1390
+13
+1590
+163
+car-count
+time
+car-count
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot count cars"
 
 @#$#@#$#@
 ## WHAT IS IT?
