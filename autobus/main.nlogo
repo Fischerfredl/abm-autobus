@@ -11,6 +11,17 @@ globals [
   max-cars
   cars-spawn-points
   bikers-spawn-points
+  dropoff_total
+  dropoff_bhouse
+  dropoff_enterpriseC
+  dropoff_center
+  dropoff_tram
+  getin_total
+  getin_bhouse
+  getin_enterpriseC
+  getin_center
+  getin_tram
+  current_passengers
 
   tram_arrival_ns ;; Second of the arrival of a tram going from north to south
   tram_arrival_sn ;; Second of the arrival of a tram going from south to north
@@ -244,6 +255,8 @@ to go
   move-pedestrians
   check-tram
   move-tramriders
+  updateCurrentPassengers
+  update-plots
   tick
 end
 
@@ -819,10 +832,10 @@ end
 ;; creates the bus instance and sets its initial parameter values
 to setup-bus
   setup-bustrack
-  create-busses 1 [
+  ;; create busses depending on what the user selected
+  create-busses number-of-busses [
     set shape "autobus"
     set color white
-    setxy 797 208
     set size 20
     set status "waiting"
     set target one-of nodes with [name = "bus_stop_tram"]
@@ -831,6 +844,15 @@ to setup-bus
     set toWait 0
     set waited 0
     set passengers no-turtles
+    move-to target
+  ]
+  ;; if user selected 2 or 3 busses, place one of them at the boarding house station
+  if count busses > 1 [
+    ask one-of busses [
+      set target one-of nodes with [name = "bus_stop_bhouse"]
+      set route routeBT
+      move-to target
+    ]
   ]
 end
 
@@ -885,16 +907,17 @@ end
 to process-bus
   ask busses [
     ifelse status != "waiting" [ ;; if status is not waiting behave depending on status
-     if status = "driving" [
+      if status = "driving" [
         busDrive
       ]
       if status = "boarding" [
         busBoard
       ]
     ]
-    [                           ;; if bus is waiting, watch the time and set status to "boarding" if bus must drive due to schedule
-      ;; if time is between 5:30 and 21:00 and bus must drive due to schedule
-      if (total_minutes >= 330) and (total_minutes <= 1260) and (member? time schedule) [
+    [ ;; if bus is waiting, watch the time and set status to "boarding" if bus must drive due to schedule
+      ;; if time is between 5:30 and 21:00 and bus must drive due to schedule; seconds = 0 necessary so that
+      ;; this block is only executed once per "schedule time"
+      if (total_minutes >= 330) and (total_minutes <= 1260) and (member? time schedule) and seconds = 0 [
         set status "boarding"
       ]
     ]
@@ -904,20 +927,22 @@ end
 ;; bus behaviour while status is "driving"
 to busDrive
   ask busses [
-    ifelse distance target <= 3 [               ;; check if bus is near a node and - if yes - move it to this node
-      face target
-      move-to target
-      ifelse [busstop?] of target = true [      ;; check if reached node is a busstop
-        set status "boarding"                   ;; if so, set status to "boarding"
+    if status = "driving" [
+      ifelse distance target <= 3 [               ;; check if bus is near a node and - if yes - move it to this node
+        face target
+        move-to target
+        ifelse [busstop?] of target = true [      ;; check if reached node is a busstop
+          set status "boarding"                   ;; if so, set status to "boarding"
+        ]
+        [
+          set target item 0 route                 ;; if node is not a bus stop set new target and update route list and keep status "driving"
+          set route remove-item 0 route
+        ]
       ]
-      [
-        set target item 0 route                 ;; if node is not a bus stop set new target and update route list and keep status "driving"
-        set route remove-item 0 route
+      [                                           ;; if bus is not near a node, just move it with 12 km/h (3 m/s) towards the next node (target)
+        face target
+        fd 3
       ]
-    ]
-    [                                           ;; if bus is not near a node, just move it with 12 km/h (3 m/s) towards the next node (target)
-      face target
-      fd 3
     ]
   ]
 end
@@ -925,33 +950,35 @@ end
 ;; bus behaviour while status is "boarding"
 to busBoard
   ask busses [
-    ifelse boardingFinished? = false [
-      boardPassengers
-    ]
-    [ ;; only execute when boardingTime (toWait) is calculated
-      ifelse waited < toWait [   ;; if boarding is not yet finished
-        set waited waited + 1    ;; add 1 second to waited
+    if status = "boarding" [
+      ifelse boardingFinished? = false [
+        boardPassengers
       ]
-      [                          ;; if boarding time is finished
-        set waited 0
-        ;; check if this was the last stop on the route
-        ifelse length route != 0 [ ;; if not, set status to "driving", set new target and update route list
-          set target item 0 route
-          set route remove-item 0 route
-          set status "driving"
+      [ ;; only execute when boardingTime (toWait) is calculated
+        ifelse waited < toWait [   ;; if boarding is not yet finished
+          set waited waited + 1    ;; add 1 second to waited
         ]
-        [                          ;; if it was the last stop, set status to "waiting" and update route list
-          set status "waiting"
-          ifelse [name] of target = "bus_stop_tram" [
-            set route routeTB
+        [                          ;; if boarding time is finished
+          set waited 0
+          ;; check if this was the last stop on the route
+          ifelse length route != 0 [ ;; if not, set status to "driving", set new target and update route list
+            set target item 0 route
+            set route remove-item 0 route
+            set status "driving"
           ]
-          [
-            set route routeBT
+          [                          ;; if it was the last stop, set status to "waiting" and update route list
+            set status "waiting"
+            ifelse [name] of target = "bus_stop_tram" [
+              set route routeTB
+            ]
+            [
+              set route routeBT
+            ]
           ]
+          set boardingFinished? false        ;; reset BTcalced as well as toWait and waited
+          set waited 0
+          set toWait 0
         ]
-        set boardingFinished? false        ;; reset BTcalced as well as toWait and waited
-        set waited 0
-        set toWait 0
       ]
     ]
   ]
@@ -964,8 +991,10 @@ to boardPassengers
   let boardingTime 0
   let currentStop [target] of self
   let waitingPatch patch-at 0 0
-  let possiblePassengers no-turtles
-  let dropouts no-turtles
+  let possiblePassengers no-turtles ;; passengers waiting for the bus
+  let newPassengers no-turtles ;; passengers that intend to board the bus, because it is going in the right direction for them
+  let passengersBoarded 0 ;; number of passengers that actually boarded the bus
+  let dropouts no-turtles ;; passengers that want to get off the bus
   let remainingNodesOnRoute []
   let callingBus self
   checkPassengers
@@ -1001,7 +1030,7 @@ to boardPassengers
       set hidden? false
       move-to one-of nodes with [name = ([exit_bus_stop] of myself)]
       set movement_status "exiting_bus"
-      show (word "got off the bus " "(target was " [exit_bus_stop] of self)
+      show (word "got off the bus " "(target was " [exit_bus_stop] of self ")")
     ]
     ;; update passenger list of the bus and add 1.5 seconds boarding time per exiting passenger
     set passengers passengers with [exit_bus_stop != ([name] of currentStop)]
@@ -1011,7 +1040,6 @@ to boardPassengers
 
   ;; let passengers board the bus
   if possiblePassengers != no-turtles [
-    let newPassengers no-turtles
     ;; filter those possiblePassengers whos target is on the current route of the bus
     ask possiblePassengers [
       ;; check if there is remaining space on the bus
@@ -1032,6 +1060,7 @@ to boardPassengers
               set movement_status "on_bus"
               set boardingTime boardingTime + 1.5
               show "entered the bus"
+              set passengersBoarded passengersBoarded + 1
             ]
           ]
           set passengers (turtle-set passengers boardingPassenger)
@@ -1043,6 +1072,7 @@ to boardPassengers
           set movement_status "on_bus"
           set boardingTime boardingTime + 1.5
           show "entered the bus"
+          set passengersBoarded passengersBoarded + 1
         ]
         set passengers (turtle-set passengers newPassengers)
       ]
@@ -1053,19 +1083,50 @@ to boardPassengers
   ;; at last update toWait attribute of the bus and set boardingFinished to true
   set toWait boardingTime
   set boardingFinished? true
+  checkPassengers ;; update color and passenger status of the bus
+
+  set dropoff_total dropoff_total + (count dropouts)
+  set getin_total getin_total + passengersBoarded
+  if [name] of currentStop = "bus_stop_bhouse" [
+    set dropoff_bhouse dropoff_bhouse + (count dropouts)
+    set getin_bhouse getin_bhouse + passengersBoarded
+  ]
+  if [name] of currentStop = "bus_stop_enterpriseC" [
+    set dropoff_enterpriseC dropoff_enterpriseC + (count dropouts)
+    set getin_enterpriseC getin_enterpriseC + passengersBoarded
+  ]
+  if [name] of currentStop = "bus_stop_center" [
+    set dropoff_center dropoff_center + (count dropouts)
+    set getin_center getin_center + passengersBoarded
+  ]
+  if [name] of currentStop = "bus_stop_tram" [
+    set dropoff_tram dropoff_tram + (count dropouts)
+    set getin_tram getin_tram + passengersBoarded
+  ]
+end
+
+to updateCurrentPassengers
+  let curPas 0
+  ask busses [
+    set curPas curPas + (count passengers)
+  ]
+  set current_passengers curPas
 end
 
 ;; sets the passengerStatus attribute the calling bus
 to checkPassengers
-  ifelse passengers = nobody [
+  ifelse passengers = no-turtles [
     set passengerStatus "empty"
+    set color white
   ]
   [
     ifelse count passengers < 12 [
       set passengerStatus "free"
+      set color green
     ]
     [
       set passengerStatus "full"
+      set color red
     ]
   ]
 end
@@ -1576,7 +1637,7 @@ end
 
 to tramrider-spawning-process
 
-;; Setting the cosmetics
+        ;; Setting the cosmetics
         set shape "person"
         set color yellow
         set size 10
@@ -1618,12 +1679,18 @@ to tramrider-spawning-process
         ;; Setting the waiting time to 0
         set tr_waiting_time 0
         ;; Setting the ragelimt based on probability
-        ifelse random 100 > 20
-          ;; The Maximum waiting time for the bus is 5 Minutes
-          [set tr_ragelimit random 300]
-          ;; 20% of people don't even want to intend the bus
-          [set tr_ragelimit 0]
-
+        set tr_random_val random 100
+        ;; 10% of people don't even want to intend the bus
+        if tr_random_val <= 10 [set tr_ragelimit 0]
+        ;; The next 10% of people wait 5 minutes for the bus at maximum. 5 minutes = 300 seconds
+        ;; The variance of 20 seconds is in the code for better visualization of the tramriders, so that they don't all go in the same second
+        if tr_random_val > 10 and tr_random_val <= 20 [set tr_ragelimit (290 + random 20)]
+        ;; The next 20% of people wait 10 minutes for the bus at maximum
+        if tr_random_val > 20 and tr_random_val <= 40 [set tr_ragelimit (590 + random 20)]
+        ;; The next 40% of people wait 15 minutes for the bus at maximum
+        if tr_random_val > 40 and tr_random_val <= 80 [set tr_ragelimit (890 + random 20)]
+        ;; The last 20% of people wait 20 minutes for the bus at maximum
+        if tr_random_val > 80 [set tr_ragelimit (1190 + random 20)]
 end
 
 
@@ -2632,10 +2699,10 @@ time
 11
 
 MONITOR
-1003
-350
-1190
-395
+1058
+327
+1245
+372
 count_employees_enterprise_a
 count_employees_enterprise_a
 17
@@ -2643,10 +2710,10 @@ count_employees_enterprise_a
 11
 
 MONITOR
-1003
-396
-1190
-441
+1058
+373
+1245
+418
 NIL
 count_employees_enterprise_b
 17
@@ -2654,10 +2721,10 @@ count_employees_enterprise_b
 11
 
 MONITOR
-1003
-442
-1190
-487
+1058
+419
+1245
+464
 NIL
 count_employees_enterprise_c
 17
@@ -2665,10 +2732,10 @@ count_employees_enterprise_c
 11
 
 MONITOR
-1003
-489
-1190
-534
+1058
+466
+1245
+511
 NIL
 count_visitors_bhouse
 17
@@ -2714,6 +2781,144 @@ MONITOR
 tramriders waiting for sn tram
 tramriders with [tr_current_destination = \"tram_sn\" and xcor = 830 and ycor = 162]
 17
+1
+11
+
+CHOOSER
+369
+113
+507
+158
+number-of-busses
+number-of-busses
+1 2 3
+2
+
+MONITOR
+932
+10
+1034
+55
+NIL
+dropoff_bhouse
+0
+1
+11
+
+MONITOR
+932
+57
+1058
+102
+NIL
+dropoff_enterpriseC
+0
+1
+11
+
+MONITOR
+933
+151
+1020
+196
+NIL
+dropoff_tram
+0
+1
+11
+
+MONITOR
+932
+104
+1029
+149
+NIL
+dropoff_center
+17
+1
+11
+
+MONITOR
+933
+198
+1020
+243
+NIL
+dropoff_total
+0
+1
+11
+
+PLOT
+1044
+10
+1244
+160
+current_passengers
+time
+pasengers
+0.0
+0.0
+0.0
+36.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot current_passengers"
+
+MONITOR
+933
+272
+1021
+317
+NIL
+getin_bhouse
+0
+1
+11
+
+MONITOR
+934
+321
+1046
+366
+NIL
+getin_enterpriseC
+0
+1
+11
+
+MONITOR
+934
+368
+1017
+413
+NIL
+getin_center
+0
+1
+11
+
+MONITOR
+935
+416
+1008
+461
+NIL
+getin_tram
+17
+1
+11
+
+MONITOR
+935
+463
+1008
+508
+NIL
+getin_total
+0
 1
 11
 
