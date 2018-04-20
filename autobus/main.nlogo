@@ -22,6 +22,8 @@ globals [
   getin_center
   getin_tram
   current_passengers
+  current_tramriders_waiting
+  tramriders_skipped_bus
 
   tram_arrival_ns ;; Second of the arrival of a tram going from north to south
   tram_arrival_sn ;; Second of the arrival of a tram going from south to north
@@ -1992,6 +1994,8 @@ to move-tramriders
          set tr_waiting_time 0]
         [set movement_status "going to work"
          set tr_waiting_time 0]
+      ;; Adding 1 to the total count of tramriders that missed the bus everytime a tramrider goes to tram/work by foot instead of taking the bus
+      set tramriders_skipped_bus (tramriders_skipped_bus + 1)
     ]
 
 
@@ -2020,6 +2024,12 @@ to move-tramriders
 
     ;; Reset of the collision detection for next tick
     set tr_stop false
+
+
+    ;; Global Tramrider Variables for Outputs
+    set current_tramriders_waiting count tramriders with [movement_status = "waiting_for_bus"]
+
+
 ]
 end
 
@@ -2954,6 +2964,35 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "plot count cars"
+
+PLOT
+1296
+267
+1496
+417
+current_tramriders_waiting
+time
+tramriders waiting
+0.0
+0.0
+0.0
+50.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot current_tramriders_waiting"
+
+MONITOR
+1296
+428
+1434
+473
+tramriders skipped bus
+tramriders_skipped_bus
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
