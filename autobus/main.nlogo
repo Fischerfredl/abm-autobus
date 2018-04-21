@@ -53,6 +53,7 @@ breed [trams tram] ;; agents representing the trams
 breed [tramriders tramrider] ;; agents representing the tramriders
 breed [tr_nodes tr_node] ;; tr_nodes are agents representing the waypoints of the routes of the tramriders
 breed [busses bus] ;; agents, representing the autonomus bus
+breed [lights light];; represents a traffic light on locations where the bus crosses streets
 
 ;; attributes of pedestrians
 pedestrians-own[
@@ -153,6 +154,7 @@ to setup
   setup-rush-hour-factor
   setup-pedestrians
   setup-tr_nodes
+  setup-lights
 
 end
 
@@ -250,6 +252,7 @@ to go
     stop
   ]
   process-bus
+  process-lights
   process-bikers
   process-cars
   process-rush-hour-factor
@@ -821,7 +824,33 @@ end
 
 
 
+;; ===== LIGHTS IMPLEMENTATION =====
+;; creates two agents representing traffic lights
+to setup-lights
+  create-lights 2 [
+    set color green
+    set shape "lights"
+    set size 15
+    setxy 370 350
+  ]
+  ask one-of lights [
+    setxy 740 310
+  ]
+end
 
+;; in order for the bus(es) to be able to keep up to its schedule and for saftey reasons,
+;; these agents behave much like some traffic lights in reality that are triggered by vehicles of
+;; public transportation
+to process-lights
+  ask lights [
+    ifelse any? (busses in-radius 30) [
+      set color red
+    ]
+    [
+      set color green
+    ]
+  ]
+end
 
 
 
@@ -861,6 +890,7 @@ to setup-bus
     ]
   ]
 end
+
 
 ;; sets up the nodes which enable the bus to move along the route
 to setup-bustrack
@@ -3221,6 +3251,12 @@ false
 0
 Polygon -7500403 true true 150 210 135 195 120 210 60 210 30 195 60 180 60 165 15 135 30 120 15 105 40 104 45 90 60 90 90 105 105 120 120 120 105 60 120 60 135 30 150 15 165 30 180 60 195 60 180 120 195 120 210 105 240 90 255 90 263 104 285 105 270 120 285 135 240 165 240 180 270 195 240 210 180 210 165 195
 Polygon -7500403 true true 135 195 135 240 120 255 105 255 105 285 135 285 165 240 165 195
+
+lights
+false
+0
+Circle -16777216 true false 0 0 300
+Circle -7500403 true true 30 30 240
 
 line
 true
