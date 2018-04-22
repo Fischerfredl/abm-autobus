@@ -1348,8 +1348,8 @@ to spawn-trams
       ;; Calculating the number of passengers within the tram
       ;; <> !!! <> VORLÄUFIG (Bis zur Einigung) <> !!! <>: Tramriders can only be spawned when there is still space in one of the three enterprises
       if count_employees_enterprise_a < 40 or count_employees_enterprise_b < 60 or count_employees_enterprise_c < 400 [
-        ;; The first number is the factor for the rushhour, the second one the factor for the tram and the third one a random factor
-        set tram_passengers_ns floor(1 * 20 * random-float 1.5)]
+        ;; The first number is the factor for the rushhour, the second one the factor for the tram (with direction) and the third one a random factor
+        set tram_passengers_ns floor(rush-hour-factor * 20 * (1 + random-float 0.5))]
       ;; Limiting the possible amount of passengers within the trams based on its model, new or old
       if t_type = "new" [
         ;; There is an additional subdivision for new trams. 16 out of 68 newer trams have a maximum amount of passengers of 248. The other 52 have a maximum amount of passengers of 228.
@@ -1392,8 +1392,8 @@ to spawn-trams
       ;; Calculating the number of passengers within the tram
       ;; <> !!! <> VORLÄUFIG (Bis zur Einigung) <> !!! <>: Tramriders can only be spawned when there is still space in one of the three enterprises
       if count_employees_enterprise_a < 40 or count_employees_enterprise_b < 60 or count_employees_enterprise_c < 400 [
-        ;; The first number is the factor for the rushhour, the second one the factor for the tram and the third one a random factor
-        set tram_passengers_sn floor(1 * 2 * random-float 1.5)]
+        ;; The first number is the factor for the rushhour, the second one the factor for the tram (with direction) and the third one a random factor
+        set tram_passengers_sn floor(rush-hour-factor * 2 * (1 + random-float 0.5))]
       ;; Limiting the possible amount of passengers within the trams based on its model, new or old
       if t_type = "new" [
         ;; There is an additional subdivision for new trams. 16 out of 68 newer trams have a maximum amount of passengers of 248. The other 52 have a maximum amount of passengers of 228.
@@ -2486,25 +2486,25 @@ to tramriders-work
   ;; Start working
   ;; If the Employees are on the position of a Building, the start working
   ;; The Tramrider is hidden visually because he is inside the building
-  ;; The Working time is calculated randomly
+  ;; The Working time is calculated by german working statistics
   ;; The status of movement is set to "working"
   if movement_status = "going to work" [
   ;; Enterprise A
   if [tr_n_name] of tr_target = "building_enterprise_a" and distance tr_target = 0 [
     hide-turtle
-    set tr_max_working_time random 60 ;; Angestellte arbeiten bis zu 1 Minute täglich
+    calculate-working-time
     set movement_status "working"
   ]
   ;; Enterprise B
   if [tr_n_name] of tr_target = "building_enterprise_b" and distance tr_target = 0 [
     hide-turtle
-    set tr_max_working_time random 60 ;; Angestellte arbeiten bis zu 1 Minute täglich
+    calculate-working-time
     set movement_status "working"
   ]
   ;; Enterprise C
   if [tr_n_name] of tr_target = "building_enterprise_c" and distance tr_target = 0 [
     hide-turtle
-    set tr_max_working_time random 60 ;; Angestellte arbeiten bis zu 1 Minute täglich
+    calculate-working-time
     set movement_status "working"
   ]
   ]
@@ -2551,19 +2551,20 @@ to tramriders-work
     ]
   ]
 
-;;  Stored since tram: tr_home ;; Home of the tramrider (north or south)
-;;  Reassigned after work: movement_status ;; Going to Bus stop, waiting, going to work
-;;  Reassigned after work: tr_ultimate_destination ;; Enterprise A,B,C or Tram
-;;  Reassigned after work: tr_current_destination
-;;  Reassigned after work, leaving the building: tr_target
-;;  Reset after stopping to wait for the tram: tr_waiting_time
-;;  Stored since tram: tr_ragelimit
-;;  Reset every tick: tr_stop
-;;  Recalculated at various points: tr_random_val
-;;  Not changed after work: tr_max_working_time
-;;  Not changed after work: tr_time_spent_working
+
+end
 
 
+to calculate-working-time
+  ;; The function to calculate the working time
+  ;; Random factor to chose if the employee works full-time
+  set tr_random_val random 100
+  ;; About 72% of german employees work full-time. The other 28% work part-time
+  ifelse tr_random_val > 72
+    ;; Part-time workers work on average 3h, 56min and 20sec a day => 14180 seconds a day
+    [set tr_max_working_time 14180]
+    ;; Full-time workers work on average 8h, 20min and 24sec a day and take a break of 1h => 33624 seconds a day
+    [set tr_max_working_time 33624]
 end
 
 
