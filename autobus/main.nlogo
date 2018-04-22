@@ -483,12 +483,11 @@ end
 ; atm there are 4 types of pedestrians taking different routes
 ;;
 to spawn-pedestrians
-  ; spawn a pedestrian every 20 seconds/ticks
-  if (ticks mod (20 / rush-hour-factor) = 0) [
+  ; spawn a pedestrian every 15 / rush-hour-factor seconds/ticks
+  if (ticks mod (15 / rush-hour-factor) = 0) [
+
     ; set a random number to spawn a random pedestrian-type
     set rand_pedestrian random 7
-
-
 
     create-pedestrians 1 [
       set shape "person"
@@ -503,6 +502,7 @@ to spawn-pedestrians
 
       ]
 
+      ;pedestrian that wants to take the bus to the tram station if available
       if(rand_pedestrian = 1)[
         set pedestrian_type "bus_to_tram"
         set xcor 285
@@ -520,6 +520,7 @@ to spawn-pedestrians
         set goaly 618
       ]
 
+      ;pedestrian that wants to take the bus to the central bus stop if available
       if(rand_pedestrian = 3)[
         set pedestrian_type "bus_to_center"
         set xcor 20
