@@ -271,7 +271,7 @@ end
 ;; used in setup
 ;; setup global variables
 to setup-bikers
-  if (max-bikers = 0) [ set max-bikers 30] ;; set only if not already set via slider
+  if (max-bikers = 0) [ set max-bikers 10] ;; set only if not already set via slider
   set bikers-spawn-points [[181 623] [231 358] [831 204]]
 end
 
@@ -286,7 +286,7 @@ end
 
 ;; spawn bikers on every spawn-poin
 to bikers-spawn
-  set max-bikers (rush-hour-factor * 30)
+  set max-bikers (rush-hour-factor * 10)
 
   while [count bikers < max-bikers] [
     foreach bikers-spawn-points [
@@ -354,7 +354,7 @@ end
 ;; used in setup
 ;; setup global variables
 to setup-cars
-  if (max-cars = 0) [ set max-cars 30] ;; set only if not already set via slider
+  if (max-cars = 0) [ set max-cars 8] ;; set only if not already set via slider
   set cars-spawn-points [[278 611] [16 530] [384 44] [615 21] [884 302]]
 end
 
@@ -369,7 +369,7 @@ end
 
 ;; spawn car on every spawn-poin
 to cars-spawn
-    set max-cars (rush-hour-factor * 30)
+    set max-cars (rush-hour-factor * 8)
 
     while [count cars < max-cars] [
       foreach shuffle cars-spawn-points [
