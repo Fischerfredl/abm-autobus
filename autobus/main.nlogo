@@ -324,7 +324,6 @@ to biker-move
     set heading ( heading + turn )
     fd velocity
   ] [
-    show "agent is stuck and has to die"
     die ;; die if stuck
   ]
 end
@@ -420,7 +419,6 @@ to car-move
     set heading ( heading + turn )
     if (save-to-move self) [ fd velocity ]
   ] [
-    show "agent is stuck and has to die"
     die
   ] ;; die if stuck
 end
@@ -1005,10 +1003,6 @@ to boardPassengers
   let callingBus self
   checkPassengers
 
-  show "=========================================="
-  show (word "boarding at " [name] of currentStop)
-  show "=========================================="
-
   ;; add all remaining nodes of the route to the variable "remainingNodesOnRoute"
   foreach route [ x ->
     if x != target [ ;; since target is yet set to the node where the bus is currently at, this one is excluded
@@ -1020,28 +1014,23 @@ to boardPassengers
   if (any? ((pedestrians-on waitingPatch) with [movement_status = "waiting_for_bus"])) or
      (any? ((tramriders-on waitingPatch) with [movement_status = "waiting_for_bus"])) [
     set possiblePassengers (turtle-set (pedestrians-on waitingPatch) with [movement_status = "waiting_for_bus"] (tramriders-on waitingPatch) with [movement_status = "waiting_for_bus"])
-    show (word count possiblePassengers " passanger(s) are waiting at this stop")
   ]
 
   ;; check the passenger agentset of the bus for passengers willig to get off the bus at the current stop
   if passengers != no-turtles [
     set dropouts ([passengers] of self) with [exit_bus_stop = ([name] of currentStop)]
-    show (word count dropouts " passanger(s) want to exit the bus at this stop")
   ]
 
   ;; let passengers get off the bus
   if dropouts != no-turtles [
-    show "hop off process"
     ask dropouts [
       set hidden? false
       move-to one-of nodes with [name = ([exit_bus_stop] of myself)]
       set movement_status "exiting_bus"
-      show (word "got off the bus " "(target was " [exit_bus_stop] of self ")")
     ]
     ;; update passenger list of the bus and add 1.5 seconds boarding time per exiting passenger
     set passengers passengers with [exit_bus_stop != ([name] of currentStop)]
     set boardingTime boardingTime + ((count dropouts) * 1.5)
-    show "hop off process finished"
   ]
 
   ;; let passengers board the bus
@@ -1056,7 +1045,6 @@ to boardPassengers
 
     ;; check if there is space for all newPassengers
     if newPassengers != no-turtles [
-      show "hop on process"
       ifelse (count newPassengers + count passengers) > 12 [ ;; if not let passengers enter the bus until its full
         while [count passengers < 12] [
           let boardingPassenger one-of newPassengers
@@ -1065,7 +1053,6 @@ to boardPassengers
               set hidden? true
               set movement_status "on_bus"
               set boardingTime boardingTime + 1.5
-              show "entered the bus"
               set passengersBoarded passengersBoarded + 1
             ]
           ]
@@ -1077,15 +1064,12 @@ to boardPassengers
           set hidden? true ;; hide passenger (since he is on the bus now) and update his status
           set movement_status "on_bus"
           set boardingTime boardingTime + 1.5
-          show "entered the bus"
           set passengersBoarded passengersBoarded + 1
         ]
         set passengers (turtle-set passengers newPassengers)
       ]
-      show "hop on process finished"
     ]
   ]
-  show (word count passengers " passenger(s) are currently on the bus")
   ;; at last update toWait attribute of the bus and set boardingFinished to true
   set toWait boardingTime
   set boardingFinished? true
