@@ -484,7 +484,7 @@ end
 ;;
 to spawn-pedestrians
   ; spawn a pedestrian every 20 seconds/ticks
-  if (ticks mod 20 = 0) [
+  if (ticks mod (20 / rush-hour-factor) = 0) [
     ; set a random number to spawn a random pedestrian-type
     set rand_pedestrian random 7
 
@@ -714,13 +714,12 @@ to cross-street
 end
 
 ;;
-; READ THIS TO UNDERSTAND WTF IS GOING ON IN THIS FUNCTION
 ; definition of walking ground: boardwalk or misc = 11 or misc = 4
 ; check if the patch ahead is walking ground and walk if walkable
 ; otherwise check the patches left-and-ahead and right-and-ahead for walking ground and go there if walkable
 ; otherwise check the patches left and right for walking ground and go there if walkable
 ; otherwise check the patches left-and-ahead and right-and-ahead behind them for walking ground and go there if walkable
-; otherwise GET THE FUCK OUT OF HERE!
+; otherwise die
 ;;
 to walk-normally
 
@@ -2993,6 +2992,24 @@ tramriders_skipped_bus
 17
 1
 11
+
+PLOT
+1300
+501
+1500
+651
+pedestrian-count
+time
+pedestrian-count
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -5298144 true "" "plot count pedestrians"
 
 @#$#@#$#@
 ## WHAT IS IT?
