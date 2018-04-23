@@ -23,7 +23,6 @@ globals [
   current_passengers
   current_tramriders_waiting
   tramriders_skipped_bus
-  list_time_waiting_for_bus
   list_time_to_enterprise
   list_time_to_tram
 
@@ -2226,7 +2225,6 @@ end
 to move-tramriders
   ;; Create lists for storing times for the output
   if ticks = 1 [
-    set list_time_waiting_for_bus []
     set list_time_to_enterprise []
     set list_time_to_tram []
   ]
@@ -2253,10 +2251,6 @@ to move-tramriders
     ;; Ending the waiting-on-the-bus process
     ;; When the waiting time exceeds the ragelimit, the tramrider decides to go to this destination by foot
     if movement_status = "waiting_for_bus" and tr_waiting_time > tr_ragelimit [
-      ;; Storing the waiting time into a list
-      set list_time_waiting_for_bus lput tr_waiting_time list_time_waiting_for_bus
-      ;; Reset the waiting time
-      set tr_waiting_time 0
       ;; Set the destination to the location that should've been previously approached by using the bus
       set tr_current_destination tr_ultimate_destination
       ;; When the destination is one of the trams: go to the tram. Else: Go to work
@@ -3057,7 +3051,7 @@ CHOOSER
 interval
 interval
 10 15 20
-0
+2
 
 TEXTBOX
 521
