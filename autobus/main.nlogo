@@ -1633,7 +1633,7 @@ to trams-spawn-tramriders
     if (tram_exists_ns = 1 and tram_passengers_ns >= 2)[
       create-tramriders 2 [
         ;; Setting the position outside of the trams' door
-        setxy 812 875
+        setxy 812 175
         ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
         set tr_home "north"
         ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
