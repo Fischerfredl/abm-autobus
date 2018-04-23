@@ -1,16 +1,48 @@
 globals [
+  ;; =====time related=====
   seconds
   hours
   minutes
   total_minutes
-  time
+  time ;; time as string
+
+  ;; =====bus related=====
   routeTB
   routeBT
   schedule
+
+  ;; =====biker/car related=====
   max-bikers
   max-cars
   cars-spawn-points
   bikers-spawn-points
+
+  ;; =====tram related=====
+  tram_arrival_ns ;; Second of the arrival of a tram going from north to south
+  tram_arrival_sn ;; Second of the arrival of a tram going from south to north
+  tram_exists_ns ;; Dummy-Variable ob eine Tram existiert (Evtl überflüssig) => Only one tram per direction at once possible
+  tram_exists_sn
+  tram_passengers_ns ;; How many passengers the tram going from north to south is transporting that want to get out at Innovationspark/LFU
+  tram_passengers_sn ;; How many passengers the tram going from south to north is transporting that want to get out at Innovationspark/LFU
+
+  ;; =====tramrider related=====
+  ;; Counting the employees for not over-spawning employees. The function is check-employees
+  count_employees_enterprise_a ;; all employees currently existing that are assigned to Enterprise A
+  count_employees_enterprise_b ;; all employees currently existing that are assigned to Enterprise B
+  count_employees_enterprise_c ;; all employees currently existing that are assigned to Enterprise C
+  count_visitors_bhouse ;; all employees currently existing that are assigned to the Boarding House
+
+  ;; =====pedestrian related=====
+  distance_to_pedestrian ;distance of a bus stop to a pedestrian
+  rand_pedestrian ;random number to spawn different pedestrians
+  nr_pedestrians_who_waited_in_vain
+  nr_of_bus_pedestrians
+  nr_pedestrians
+
+  ;; =====rush-hour-factor=====
+  rush-hour-factor ;; determines quantity of agents depending on the current time of day
+
+    ;; =====statistics and monitors=====
   dropoff_bhouse
   dropoff_enterpriseC
   dropoff_center
@@ -23,75 +55,27 @@ globals [
   current_passengers
   current_tramriders_waiting
   tramriders_skipped_bus
+  list_waiting_time
   list_time_to_enterprise
   list_time_to_tram
-
-  tram_arrival_ns ;; Second of the arrival of a tram going from north to south
-  tram_arrival_sn ;; Second of the arrival of a tram going from south to north
-  tram_exists_ns ;; Dummy-Variable ob eine Tram existiert (Evtl überflüssig) => Only one tram per direction at once possible
-  tram_exists_sn
-  tram_passengers_ns ;; How many passengers the tram going from north to south is transporting that want to get out at Innovationspark/LFU
-  tram_passengers_sn ;; How many passengers the tram going from south to north is transporting that want to get out at Innovationspark/LFU
-
-  ;; Counting the employees for not over-spawning employees. The function is check-employees
-  count_employees_enterprise_a ;; all employees currently existing that are assigned to Enterprise A
-  count_employees_enterprise_b ;; all employees currently existing that are assigned to Enterprise B
-  count_employees_enterprise_c ;; all employees currently existing that are assigned to Enterprise C
-  count_visitors_bhouse ;; all employees currently existing that are assigned to the Boarding House
-
-  distance_to_pedestrian ;distance of a bus stop to a pedestrian
-  rand_pedestrian ;random number to spawn different pedestrians
-  nr_pedestrians_who_waited_in_vain
-  nr_of_bus_pedestrians
-  nr_pedestrians
-
-
-  rush-hour-factor
+  avg_waiting_time
+  avg_time_to_enterprise
+  avg_time_to_tram
 ]
 
+;; =====AGENT TYPES=====
 ;; ordering of breed represents drawing order on map; breeds declared later overlap those declared earlier
-breed [nodes node] ;; nodes are agents representing the stops and turning points of the route the bus drives along
+breed [nodes node] ;; nodes are agents representing the stops and turning points of the bus route
 breed [bikers biker]
 breed [cars car]
+breed [busses bus]
 breed [pedestrians pedestrian] ;; breed pedestrians
 breed [trams tram] ;; agents representing the trams
 breed [tramriders tramrider] ;; agents representing the tramriders
 breed [tr_nodes tr_node] ;; tr_nodes are agents representing the waypoints of the routes of the tramriders
-breed [busses bus] ;; agents, representing the autonomus bus
 
-;; attributes of pedestrians
-pedestrians-own[
-  pedestrian_type
-  goalx
-  goaly
-  crossingx
-  crossingy
-  next-patchx
-  next-patchy
-  crossing-street?
-  movement_status
-  exit_bus_stop
-  waiting-time
-  tr_waiting_time
-]
 
-patches-own [
-  street
-  boardwalk
-  misc
-]
-
-busses-own [
-  target              ;; the node where the bus is currently driving towards
-  status              ;; information about the current state of this agent ("driving", "waiting")
-  route               ;; list containing the nodes which represents the current route of the bus; either from boarding house to TZI or vice versa
-  passengers          ;; list containing agents which are currently on the bus
-  passengerStatus     ;; can be "full", "emtpy" or "free" depending on how many passengers are on the bus
-  boardingFinished?   ;; indicates wether boarding process is finished
-  waited              ;; seconds/ticks since bus stopped for boarding
-  toWait              ;; seconds/ticks that bus has to wait according to number of passenger getting on/off the bus
-]
-
+;; =====AGENT ATTRIBUTES=====
 nodes-own [
   busstop? ;; bool determining wether this is a busstop or not
   name     ;; name of the node for identification
@@ -105,6 +89,32 @@ bikers-own [
 cars-own [
   velocity
   time-alive
+]
+
+busses-own [
+  target              ;; the node where the bus is currently driving towards
+  status              ;; information about the current state of this agent ("driving", "waiting")
+  route               ;; list containing the nodes which represents the current route of the bus; either from boarding house to TZI or vice versa
+  passengers          ;; list containing agents which are currently on the bus
+  passengerStatus     ;; can be "full", "emtpy" or "free" depending on how many passengers are on the bus
+  boardingFinished?   ;; indicates wether boarding process is finished
+  waited              ;; seconds/ticks since bus stopped for boarding
+  toWait              ;; seconds/ticks that bus has to wait according to number of passenger getting on/off the bus
+]
+
+pedestrians-own[
+  pedestrian_type
+  goalx
+  goaly
+  crossingx
+  crossingy
+  next-patchx
+  next-patchy
+  crossing-street?
+  movement_status
+  exit_bus_stop
+  waiting-time
+  tr_waiting_time
 ]
 
 trams-own[
@@ -138,7 +148,14 @@ tr_nodes-own [
   tr_n_name
 ]
 
+patches-own [
+  street
+  boardwalk
+  misc
+]
 
+
+;; =====SETUP AND GENERAL FUNCTIONS=====
 ;; resets everything and reloads the map
 to setup-map
   clear-patches
@@ -167,7 +184,6 @@ to setup
     setup-pedestrians
   ]
   setup-tr_nodes
-
 end
 
 ;; reads the maplayer files from the maplayer folder and tranfers the information to the patches
@@ -265,11 +281,23 @@ to update-time
   set time (word hr_str ":" min_str)
 end
 
+to calc-output
+  set avg_waiting_time ((sum list_waiting_time) / (length list_waiting_time)) / 60
+  set avg_time_to_enterprise ((sum list_time_to_enterprise)  / (length list_time_to_enterprise)) / 60
+  set avg_time_to_tram ((sum list_time_to_tram) / (length list_time_to_tram)) / 60
+end
+
 ;; main function
 to go
+  if ticks = 0 [
+    set list_waiting_time []
+    set list_time_to_enterprise []
+    set list_time_to_tram []
+  ]
   update-time
   if hours >= 22 [
     ask turtles [ die ]
+    calc-output
     stop
   ]
   process-bus
@@ -1097,6 +1125,7 @@ to boardPassengers
               set movement_status "on_bus"
               set boardingTime boardingTime + 1.5
               set passengersBoarded passengersBoarded + 1
+              set list_waiting_time lput tr_waiting_time list_waiting_time
             ]
           ]
           set passengers (turtle-set passengers boardingPassenger)
@@ -2255,12 +2284,6 @@ to setup-tr_nodes
 end
 
 to move-tramriders
-  ;; Create lists for storing times for the output
-  if ticks = 1 [
-    set list_time_to_enterprise []
-    set list_time_to_tram []
-  ]
-
   ask tramriders [
     ;; The following 3 functions define the tramrider's next waypoint once the current waypoint is reached
     ;; Going to work
@@ -3021,9 +3044,9 @@ time
 11
 
 MONITOR
-1316
+1570
 321
-1503
+1757
 366
 count_employees_enterprise_a
 count_employees_enterprise_a
@@ -3032,9 +3055,9 @@ count_employees_enterprise_a
 11
 
 MONITOR
-1317
+1571
 370
-1504
+1758
 415
 NIL
 count_employees_enterprise_b
@@ -3043,9 +3066,9 @@ count_employees_enterprise_b
 11
 
 MONITOR
-1318
+1572
 418
-1505
+1759
 463
 NIL
 count_employees_enterprise_c
@@ -3065,9 +3088,9 @@ count_visitors_bhouse
 11
 
 MONITOR
-1136
+1390
 370
-1313
+1567
 415
 tramriders waiting for ns tram
 tramriders with [tr_current_destination = \"tram_ns\" and xcor = 809 and ycor = 172]
@@ -3083,7 +3106,7 @@ CHOOSER
 interval
 interval
 10 15 20
-2
+0
 
 TEXTBOX
 521
@@ -3096,9 +3119,9 @@ Bus is going between 5:30 and 21:00. You can choose the interval between the bus
 1
 
 MONITOR
-1137
+1391
 419
-1314
+1568
 464
 tramriders waiting for sn tram
 tramriders with [tr_current_destination = \"tram_sn\" and xcor = 830 and ycor = 162]
@@ -3107,20 +3130,20 @@ tramriders with [tr_current_destination = \"tram_sn\" and xcor = 830 and ycor = 
 11
 
 CHOOSER
-369
-113
-507
-158
+670
+114
+808
+159
 number-of-busses
 number-of-busses
 1 2 3
 2
 
 MONITOR
-1136
-217
-1238
-262
+1385
+240
+1487
+285
 NIL
 dropoff_bhouse
 0
@@ -3128,10 +3151,10 @@ dropoff_bhouse
 11
 
 MONITOR
-1240
-217
-1366
-262
+1489
+240
+1615
+285
 NIL
 dropoff_enterpriseC
 0
@@ -3139,10 +3162,10 @@ dropoff_enterpriseC
 11
 
 MONITOR
-1468
-217
-1555
-262
+1717
+240
+1804
+285
 NIL
 dropoff_tram
 0
@@ -3150,10 +3173,10 @@ dropoff_tram
 11
 
 MONITOR
-1368
-217
-1465
-262
+1617
+240
+1714
+285
 NIL
 dropoff_center
 17
@@ -3163,7 +3186,7 @@ dropoff_center
 PLOT
 931
 166
-1131
+1382
 316
 current_passengers
 time
@@ -3176,13 +3199,13 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot current_passengers"
+"default" 1.0 0 -10899396 true "" "plot current_passengers"
 
 MONITOR
-1143
-166
-1231
-211
+1392
+189
+1480
+234
 NIL
 getin_bhouse
 0
@@ -3190,10 +3213,10 @@ getin_bhouse
 11
 
 MONITOR
-1247
-165
-1359
-210
+1496
+188
+1608
+233
 NIL
 getin_enterpriseC
 0
@@ -3201,10 +3224,10 @@ getin_enterpriseC
 11
 
 MONITOR
-1374
-165
-1457
-210
+1623
+188
+1706
+233
 NIL
 getin_center
 0
@@ -3212,10 +3235,10 @@ getin_center
 11
 
 MONITOR
-1471
-166
-1544
-211
+1720
+189
+1793
+234
 NIL
 getin_tram
 17
@@ -3223,10 +3246,10 @@ getin_tram
 11
 
 MONITOR
-1137
-686
-1212
-731
+1390
+687
+1465
+732
 car-count
 count cars
 0
@@ -3236,7 +3259,7 @@ count cars
 PLOT
 932
 629
-1132
+1384
 779
 car-count
 time
@@ -3254,7 +3277,7 @@ PENS
 PLOT
 931
 321
-1131
+1382
 471
 current_tramriders_waiting
 time
@@ -3267,13 +3290,13 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot current_tramriders_waiting"
+"default" 1.0 0 -13345367 true "" "plot current_tramriders_waiting"
 
 MONITOR
-1136
-321
-1274
-366
+1390
+318
+1528
+363
 tramriders skipped bus
 tramriders_skipped_bus
 17
@@ -3283,7 +3306,7 @@ tramriders_skipped_bus
 PLOT
 931
 476
-1131
+1384
 626
 pedestrian-count
 time
@@ -3299,10 +3322,10 @@ PENS
 "default" 1.0 0 -5298144 true "" "plot count pedestrians"
 
 MONITOR
-955
-111
-1104
-156
+931
+63
+1080
+108
 NIL
 passengers_transported
 17
@@ -3310,10 +3333,10 @@ passengers_transported
 11
 
 SWITCH
-215
-17
-386
-50
+332
+53
+503
+86
 want-pedestrians?
 want-pedestrians?
 0
@@ -3321,32 +3344,32 @@ want-pedestrians?
 -1000
 
 SWITCH
-215
-55
-351
-88
+332
+91
+468
+124
 want-bikers?
 want-bikers?
-0
+1
 1
 -1000
 
 SWITCH
-215
-93
-340
-126
+332
+129
+457
+162
 want-cars?
 want-cars?
-0
+1
 1
 -1000
 
 MONITOR
-5
-859
-241
-904
+1389
+535
+1625
+580
 Pedestrians intending to take the bus ( % )
 round(nr_of_bus_pedestrians / nr_pedestrians * 100)
 17
@@ -3354,10 +3377,10 @@ round(nr_of_bus_pedestrians / nr_pedestrians * 100)
 11
 
 MONITOR
-252
-859
-452
-904
+1636
+535
+1836
+580
 Pedestrians who waited in vain ( % )
 round(nr_pedestrians_who_waited_in_vain / nr_of_bus_pedestrians * 100)
 17
@@ -3365,24 +3388,68 @@ round(nr_pedestrians_who_waited_in_vain / nr_of_bus_pedestrians * 100)
 11
 
 TEXTBOX
-256
-825
-474
-867
+1640
+501
+1858
+543
 Percentage of pedestrians who intended to take the bus but waited in vain
 11
 0.0
 1
 
 TEXTBOX
-7
-825
-231
-858
+1391
+501
+1615
+534
 Percentage of pedestrians who intend to take the bus if they get near a bus station
 11
 0.0
 1
+
+MONITOR
+1236
+115
+1382
+160
+NIL
+avg_time_to_enterprise
+1
+1
+11
+
+MONITOR
+1150
+67
+1260
+112
+NIL
+avg_waiting_time
+1
+1
+11
+
+MONITOR
+1267
+67
+1381
+112
+NIL
+avg_time_to_tram
+1
+1
+11
+
+MONITOR
+932
+111
+1057
+156
+passengers_skipped
+nr_pedestrians_who_waited_in_vain + tramriders_skipped_bus
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
