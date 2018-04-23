@@ -24,6 +24,9 @@ globals [
   current_passengers
   current_tramriders_waiting
   tramriders_skipped_bus
+  list_time_waiting_for_bus
+  list_time_to_enterprise
+  list_time_to_tram
 
   tram_arrival_ns ;; Second of the arrival of a tram going from north to south
   tram_arrival_sn ;; Second of the arrival of a tram going from south to north
@@ -124,6 +127,7 @@ tramriders-own [
   tr_max_working_time ;; The working time the employee works a day
   tr_time_spent_working ;; The current time an employee has already spent working today
   exit_bus_stop  ;; The bus stop where the tramrider going by bus wants to get out of the bus
+  time_between_destinations ;; The time a Tramrider is active between the tram station and the working place either walking, waiting for bus or going by bus
 ]
 
 tr_nodes-own [
@@ -1518,6 +1522,92 @@ to trams-spawn-tramriders
       ;; passengers who left are being subtracted from the total count
       set tram_passengers_ns (tram_passengers_ns - 2)
     ]
+
+
+    ;; Door 3 (double door)
+    if (tram_exists_ns = 1 and tram_passengers_ns >= 2)[
+      create-tramriders 2 [
+        ;; Setting the position outside of the trams' door
+        setxy 808 169
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "north"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_ns (tram_passengers_ns - 2)
+    ]
+
+    ;; Door 4 (double door)
+    if (tram_exists_ns = 1 and tram_passengers_ns >= 2)[
+      create-tramriders 2 [
+        ;; Setting the position outside of the trams' door
+        setxy 813 178
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "north"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_ns (tram_passengers_ns - 2)
+    ]
+
+    ;; Door 5 (double door)
+    if (tram_exists_ns = 1 and tram_passengers_ns >= 2)[
+      create-tramriders 2 [
+        ;; Setting the position outside of the trams' door
+        setxy 816 182
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "north"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_ns (tram_passengers_ns - 2)
+    ]
+
+    ;; Door 6 (double door)
+    if (tram_exists_ns = 1 and tram_passengers_ns >= 2)[
+      create-tramriders 2 [
+        ;; Setting the position outside of the trams' door
+        setxy 821 193
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "north"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_ns (tram_passengers_ns - 2)
+    ]
+
+    ;; Door 7 (double door)
+    if (tram_exists_ns = 1 and tram_passengers_ns >= 2)[
+      create-tramriders 2 [
+        ;; Setting the position outside of the trams' door
+        setxy 826 199
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "north"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_ns (tram_passengers_ns - 2)
+    ]
+
+    ;; Door 8 (single door)
+    if (tram_exists_ns = 1 and tram_passengers_ns >= 1)[
+      create-tramriders 1 [
+        ;; Setting the position outside of the trams' door
+        setxy 829 204
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "north"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_ns (tram_passengers_ns - 1)
+    ]
+
   ]
 
   ;; Old trams
@@ -1529,6 +1619,51 @@ to trams-spawn-tramriders
       create-tramriders 2 [
         ;; Setting the position outside of the trams' door
         setxy 807 168
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "north"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_ns (tram_passengers_ns - 2)
+    ]
+
+    ;; Door 2 (double door)
+    ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
+    if (tram_exists_ns = 1 and tram_passengers_ns >= 2)[
+      create-tramriders 2 [
+        ;; Setting the position outside of the trams' door
+        setxy 812 875
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "north"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_ns (tram_passengers_ns - 2)
+    ]
+
+    ;; Door 3 (double door)
+    ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
+    if (tram_exists_ns = 1 and tram_passengers_ns >= 2)[
+      create-tramriders 2 [
+        ;; Setting the position outside of the trams' door
+        setxy 818 185
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "north"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_ns (tram_passengers_ns - 2)
+    ]
+
+    ;; Door 4 (double door)
+    ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
+    if (tram_exists_ns = 1 and tram_passengers_ns >= 2)[
+      create-tramriders 2 [
+        ;; Setting the position outside of the trams' door
+        setxy 824 195
         ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
         set tr_home "north"
         ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
@@ -1589,6 +1724,96 @@ to trams-spawn-tramriders
       ;; passengers who left are being subtracted from the total count
       set tram_passengers_sn (tram_passengers_sn - 2)
     ]
+
+    ;; Door 3 (double door)
+    ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
+    if (tram_exists_sn = 1 and tram_passengers_sn >= 2)[
+      create-tramriders 2 [
+        ;; Setting the position outside of the trams' door
+        setxy 841 184
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "south"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_sn (tram_passengers_sn - 2)
+    ]
+
+    ;; Door 4 (double door)
+    ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
+    if (tram_exists_sn = 1 and tram_passengers_sn >= 2)[
+      create-tramriders 2 [
+        ;; Setting the position outside of the trams' door
+        setxy 837 175
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "south"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_sn (tram_passengers_sn - 2)
+    ]
+
+    ;; Door 5 (double door)
+    ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
+    if (tram_exists_sn = 1 and tram_passengers_sn >= 2)[
+      create-tramriders 2 [
+        ;; Setting the position outside of the trams' door
+        setxy 835 166
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "south"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_sn (tram_passengers_sn - 2)
+    ]
+
+    ;; Door 6 (double door)
+    ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
+    if (tram_exists_sn = 1 and tram_passengers_sn >= 2)[
+      create-tramriders 2 [
+        ;; Setting the position outside of the trams' door
+        setxy 829 157
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "south"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_sn (tram_passengers_sn - 2)
+    ]
+
+    ;; Door 7 (double door)
+    ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
+    if (tram_exists_sn = 1 and tram_passengers_sn >= 2)[
+      create-tramriders 2 [
+        ;; Setting the position outside of the trams' door
+        setxy 825 152
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "south"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_sn (tram_passengers_sn - 2)
+    ]
+
+    ;; Door 8 (single door)
+    ;; Tramriders can only be spawned if there are enough passengers on the tram wanting to get out
+    if (tram_exists_sn = 1 and tram_passengers_sn >= 1)[
+      create-tramriders 1 [
+        ;; Setting the position outside of the trams' door
+        setxy 826 142
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "south"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_sn (tram_passengers_sn - 1)
+    ]
   ]
 
   ;; Old trams
@@ -1599,6 +1824,48 @@ to trams-spawn-tramriders
       create-tramriders 2 [
         ;; Setting the position outside of the trams' door
         setxy 841 182
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "south"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_sn (tram_passengers_sn - 2)
+    ]
+
+    ;; Door 2 (double door)
+    if (tram_exists_sn = 1 and tram_passengers_sn >= 2)[
+      create-tramriders 2 [
+        ;; Setting the position outside of the trams' door
+        setxy 837 175
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "south"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_sn (tram_passengers_sn - 2)
+    ]
+
+    ;; Door 3 (double door)
+    if (tram_exists_sn = 1 and tram_passengers_sn >= 2)[
+      create-tramriders 2 [
+        ;; Setting the position outside of the trams' door
+        setxy 833 167
+        ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
+        set tr_home "south"
+        ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
+        tramrider-spawning-process
+      ]
+      ;; passengers who left are being subtracted from the total count
+      set tram_passengers_sn (tram_passengers_sn - 2)
+    ]
+
+    ;; Door 4 (double door)
+    if (tram_exists_sn = 1 and tram_passengers_sn >= 2)[
+      create-tramriders 2 [
+        ;; Setting the position outside of the trams' door
+        setxy 830 160
         ;; Saving the direction the tramrider came from to go back home after the tramrider is done working
         set tr_home "south"
         ;; In order to shorten the code, the setting of most of the tramriders' attributes happens in this additional function:
@@ -1681,6 +1948,8 @@ to tramrider-spawning-process
         if tr_random_val > 40 and tr_random_val <= 80 [set tr_ragelimit (890 + random 20)]
         ;; The last 20% of people wait 20 minutes for the bus at maximum
         if tr_random_val > 80 [set tr_ragelimit (1190 + random 20)]
+        ;; Starting the "alive"-counter to measure the needed time
+        set time_between_destinations 0
 end
 
 
@@ -1948,6 +2217,13 @@ to setup-tr_nodes
 end
 
 to move-tramriders
+  ;; Create lists for storing times for the output
+  if ticks = 1 [
+    set list_time_waiting_for_bus []
+    set list_time_to_enterprise []
+    set list_time_to_tram []
+  ]
+
   ask tramriders [
     ;; The following 3 functions define the tramrider's next waypoint once the current waypoint is reached
     ;; Going to work
@@ -1958,9 +2234,9 @@ to move-tramriders
     check-tramriders-waypoints-going-to-tram
     ;; Getting off the bus
     tramriders-get-off-bus
-
     ;; The tramriders are working when they reach their Enterprise
     tramriders-work
+
 
     ;; Ragemode-Calculation
     ;; Increasing the time waiting for the bus by one each second
@@ -1970,14 +2246,16 @@ to move-tramriders
     ;; Ending the waiting-on-the-bus process
     ;; When the waiting time exceeds the ragelimit, the tramrider decides to go to this destination by foot
     if movement_status = "waiting_for_bus" and tr_waiting_time > tr_ragelimit [
+      ;; Storing the waiting time into a list
+      set list_time_waiting_for_bus lput tr_waiting_time list_time_waiting_for_bus
+      ;; Reset the waiting time
+      set tr_waiting_time 0
       ;; Set the destination to the location that should've been previously approached by using the bus
       set tr_current_destination tr_ultimate_destination
       ;; When the destination is one of the trams: go to the tram. Else: Go to work
       ifelse tr_ultimate_destination = "tram_ns" or tr_ultimate_destination = "tram_sn"
-        [set movement_status "going to tram"
-         set tr_waiting_time 0]
-        [set movement_status "going to work"
-         set tr_waiting_time 0]
+        [set movement_status "going to tram"]
+        [set movement_status "going to work"]
       ;; Adding 1 to the total count of tramriders that missed the bus everytime a tramrider goes to tram/work by foot instead of taking the bus
       set tramriders_skipped_bus (tramriders_skipped_bus + 1)
     ]
@@ -2009,11 +2287,23 @@ to move-tramriders
     ;; Reset of the collision detection for next tick
     set tr_stop false
 
+    ;; Proceeding the "alive"-counter in order to measure the time needed to get from tram to work or the other way round
+    if movement_status != "working" [
+      set time_between_destinations (time_between_destinations + 1)]
 
     ;; Global Tramrider Variables for Outputs
     set current_tramriders_waiting count tramriders with [movement_status = "waiting_for_bus"]
 
-
+    ;; Storing the time it took to get to the tram in a list
+    ;; Arriving at the tram entrance
+    if movement_status = "going to tram" and distance tr_target = 0 and [tr_n_name] of tr_target = "tram entrance ns" [
+      set list_time_to_tram lput time_between_destinations list_time_to_tram
+      set movement_status "waiting for tram"
+    ]
+    if movement_status = "going to tram" and distance tr_target = 0 and [tr_n_name] of tr_target = "tram entrance sn" [
+      set list_time_to_tram lput time_between_destinations list_time_to_tram
+      set movement_status "waiting for tram"
+    ]
 ]
 end
 
@@ -2144,7 +2434,6 @@ to check-tramriders-waypoints-going-to-work
   ]
 
 
-
   ;; Route 2
   ;; The southern of the routes
   if distance tr_target = 0 and [tr_n_name] of tr_target = "r2_waypoint1"
@@ -2188,12 +2477,6 @@ to check-tramriders-waypoints-going-to-work
       [set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint1"]
         face tr_target]
   ]
-
-  ;; Route 3
-
-
-
-  ;; Route at the Boarding House
 
 
   ;; From route 1 to boarding house
@@ -2297,9 +2580,8 @@ to check-tramriders-inter-and-enterprise-waypoints
         face tr_target]
   ]
 ]
-
-
 end
+
 
 to check-tramriders-waypoints-going-to-tram
 
@@ -2333,7 +2615,6 @@ to check-tramriders-waypoints-going-to-tram
   if [tr_n_name] of tr_target = "entrance_enterprise_c" and distance tr_target = 0
     [set tr_target one-of tr_nodes with [tr_n_name = "interbuilding_waypoint4"]
        face tr_target]
-
 
 
   ;; going to bus stop
@@ -2417,6 +2698,7 @@ to check-tramriders-waypoints-going-to-tram
     [set tr_target one-of tr_nodes with [tr_n_name = "tram entrance sn"]
         face tr_target]
   ]
+
 end
 
 to tramriders-get-off-bus
@@ -2487,24 +2769,32 @@ to tramriders-work
   ;; If the Employees are on the position of a Building, the start working
   ;; The Tramrider is hidden visually because he is inside the building
   ;; The Working time is calculated by german working statistics
+  ;; Store the time needed to go to work in a list
+  ;; Reset the time the tramrider needed between the destinations because the destination is reached
   ;; The status of movement is set to "working"
   if movement_status = "going to work" [
   ;; Enterprise A
   if [tr_n_name] of tr_target = "building_enterprise_a" and distance tr_target = 0 [
     hide-turtle
     calculate-working-time
+    set list_time_to_enterprise lput time_between_destinations list_time_to_enterprise
+    set time_between_destinations 0
     set movement_status "working"
   ]
   ;; Enterprise B
   if [tr_n_name] of tr_target = "building_enterprise_b" and distance tr_target = 0 [
     hide-turtle
     calculate-working-time
+    set list_time_to_enterprise lput time_between_destinations list_time_to_enterprise
+    set time_between_destinations 0
     set movement_status "working"
   ]
   ;; Enterprise C
   if [tr_n_name] of tr_target = "building_enterprise_c" and distance tr_target = 0 [
     hide-turtle
     calculate-working-time
+    set list_time_to_enterprise lput time_between_destinations list_time_to_enterprise
+    set time_between_destinations 0
     set movement_status "working"
   ]
   ]
@@ -2561,10 +2851,10 @@ to calculate-working-time
   set tr_random_val random 100
   ;; About 72% of german employees work full-time. The other 28% work part-time
   ifelse tr_random_val > 72
-    ;; Part-time workers work on average 3h, 56min and 20sec a day => 14180 seconds a day
-    [set tr_max_working_time 14180]
-    ;; Full-time workers work on average 8h, 20min and 24sec a day and take a break of 1h => 33624 seconds a day
-    [set tr_max_working_time 33624]
+    ;; Part-time workers work on average 3h, 56min and 20sec a day => 14160 seconds a day
+    [set tr_max_working_time 14160]
+    ;; Full-time workers work on average 8h, 20min and 24sec a day and take a break of 1h => 33600 seconds a day
+    [set tr_max_working_time 33600]
 end
 
 
