@@ -43,6 +43,9 @@ globals [
 
   distance_to_pedestrian ;distance of a bus stop to a pedestrian
   rand_pedestrian ;random number to spawn different pedestrians
+  nr_pedestrians_who_waited_in_vain
+  nr_of_bus_pedestrians
+  nr_pedestrians
 
   rush-hour-factor
 ]
@@ -70,6 +73,7 @@ pedestrians-own[
   movement_status
   exit_bus_stop
   waiting-time
+  tr_waiting_time
 ]
 
 patches-own [
@@ -490,6 +494,12 @@ end
 
 to setup-pedestrians
   ask pedestrians[die]
+
+  set nr_pedestrians_who_waited_in_vain 0
+  set nr_of_bus_pedestrians 0
+  set nr_pedestrians 0
+
+
 end
 
 
@@ -508,6 +518,7 @@ to spawn-pedestrians
       set shape "person"
       set color red
       set size 10
+      set tr_waiting_time 0
 
       if(rand_pedestrian = 0) [
         set xcor 307
@@ -567,13 +578,17 @@ to spawn-pedestrians
         set goaly 345
       ]
 
-      if (rand_pedestrian = 0 or rand_pedestrian = 2 or rand_pedestrian = 4 or rand_pedestrian = 5 or rand_pedestrian = 6)[
+      ifelse (rand_pedestrian = 0 or rand_pedestrian = 2 or rand_pedestrian = 4 or rand_pedestrian = 5 or rand_pedestrian = 6)[
         set pedestrian_type "no_bus"
         set waiting-time 0
+      ][
+      set nr_of_bus_pedestrians nr_of_bus_pedestrians + 1
       ]
 
       facexy goalx goaly
     ]
+
+    set nr_pedestrians nr_pedestrians + 1
   ]
 end
 
@@ -826,10 +841,14 @@ to pedestrian-wait
   ifelse (waiting-time > 0) [
     ;decrement waiting time
     set waiting-time waiting-time - 1
+    set tr_waiting_time tr_waiting_time + 1
   ]
   [
     ;pedestrian gives up waiting and decides to walk
     set movement_status "no_more_waiting"
+    set nr_pedestrians_who_waited_in_vain nr_pedestrians_who_waited_in_vain + 1
+
+
   ]
 end
 
@@ -3277,24 +3296,6 @@ tramriders_skipped_bus
 1
 11
 
-PLOT
-1300
-501
-1500
-651
-pedestrian-count
-time
-pedestrian-count
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -5298144 true "" "plot count pedestrians"
-
 SWITCH
 222
 35
@@ -3324,9 +3325,51 @@ SWITCH
 150
 want-cars?
 want-cars?
-1
+0
 1
 -1000
+
+MONITOR
+930
+664
+1127
+709
+Pedestrians who waited in vain ( % )
+round(nr_pedestrians_who_waited_in_vain / nr_of_bus_pedestrians * 100)
+17
+1
+11
+
+MONITOR
+931
+567
+1148
+612
+pedestrians intending to take bus ( % )
+round(nr_of_bus_pedestrians /  nr_pedestrians * 100)
+17
+1
+11
+
+TEXTBOX
+932
+620
+1129
+676
+Percentage of the pedestrians that wanted to take the bus, but waited in vain
+11
+0.0
+1
+
+TEXTBOX
+934
+536
+1084
+564
+Percentage of pedestrians who inteded to take the bus
+11
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
