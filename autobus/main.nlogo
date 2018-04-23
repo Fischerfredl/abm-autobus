@@ -28,6 +28,7 @@ globals [
   list_time_to_enterprise
   list_time_to_tram
 
+
   tram_arrival_ns ;; Second of the arrival of a tram going from north to south
   tram_arrival_sn ;; Second of the arrival of a tram going from south to north
   tram_exists_ns ;; Dummy-Variable ob eine Tram existiert (Evtl überflüssig) => Only one tram per direction at once possible
@@ -152,10 +153,17 @@ to setup
   set time ""
   setup-bus
   setup-schedule
-  setup-bikers
-  setup-cars
   setup-rush-hour-factor
-  setup-pedestrians
+  if (want-bikers?) [
+    setup-bikers
+  ]
+  if (want-cars?) [
+    setup-cars
+  ]
+
+  if (want-pedestrians?) [
+    setup-pedestrians
+  ]
   setup-tr_nodes
 
 end
@@ -254,11 +262,17 @@ to go
     stop
   ]
   process-bus
-  process-bikers
-  process-cars
   process-rush-hour-factor
-  spawn-pedestrians
-  move-pedestrians
+  if (want-bikers?) [
+    process-bikers
+  ]
+  if (want-cars?) [
+    process-cars
+  ]
+  if (want-pedestrians?)[
+    spawn-pedestrians
+    move-pedestrians
+  ]
   check-tram
   move-tramriders
   updateCurrentPassengers
@@ -3081,7 +3095,7 @@ CHOOSER
 number-of-busses
 number-of-busses
 1 2 3
-2
+0
 
 MONITOR
 932
@@ -3286,6 +3300,39 @@ false
 "" ""
 PENS
 "default" 1.0 0 -5298144 true "" "plot count pedestrians"
+
+SWITCH
+222
+35
+379
+68
+want-pedestrians?
+want-pedestrians?
+0
+1
+-1000
+
+SWITCH
+222
+75
+358
+108
+want-bikers?
+want-bikers?
+1
+1
+-1000
+
+SWITCH
+222
+117
+347
+150
+want-cars?
+want-cars?
+1
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
