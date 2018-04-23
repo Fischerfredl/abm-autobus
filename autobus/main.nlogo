@@ -895,6 +895,8 @@ end
 
 
 ;; ===== BUS IMPLEMENTATION =====
+
+;; ===== SETUP FUNCTIONS =====
 ;; reads the bus schedule from one of the txt-files depending on which interval the user chose
 to setup-schedule
   file-open (word "schedules/" interval "min.txt")
@@ -904,54 +906,56 @@ to setup-schedule
   file-close
 end
 
-;; creates the bus instance and sets its initial parameter values
+;; creates bus instances and sets its initial attribute values
 to setup-bus
   setup-bustrack
-  ;; create busses depending on what the user selected
+  ;; create busses depending on what the user selected and place them at bus stop "tram"
   create-busses number-of-busses [
     set shape "autobus"
     set color white
     set size 20
     set status "waiting"
     set target one-of nodes with [name = "bus_stop_tram"]
-    set route routeTB
+    move-to target
+    set route routeTB ;; set the route "tram to boardinghouse"
     set boardingFinished? false
     set toWait 0
     set waited 0
     set passengers no-turtles
-    move-to target
   ]
-  ;; if user selected 2 or 3 busses, place one of them at the boarding house station
+  ;; if user selected 2 or 3 busses, overwrite some of the attributes of one bus to place it at the boarding house station
+  ;; this way (with 3 busses) two of them are initially at the tram station where more passengers are awaited
   if count busses > 1 [
     ask one-of busses [
       set target one-of nodes with [name = "bus_stop_bhouse"]
-      set route routeBT
       move-to target
+      set route routeBT ;; set the route "boardinghouse to tram"
     ]
   ]
 end
 
-;; sets up the nodes which enable the bus to move along the route
+;; sets up the nodes which enable busses to move along the determined route
 to setup-bustrack
   let coords [[172 517] [166 384] [165 365] [415 346] [733 320] [723 216] [797 208]] ;; xy-coords of the nodes
   let names ["bus_stop_bhouse" "bus_stop_enterpriseC" "turn_1" "bus_stop_center" "turn_2" "turn_3" "bus_stop_tram"] ;; names of the nodes
-  create-nodes 7 [
-    set hidden? true ;; hide, because nodes are just locigal elements
-    set shape "circle"
-    set size 15
-    set color violet
-  ]
-  ;; read data from lists above and set agent-variables respectively
+  create-nodes 7
   foreach sort nodes [ p ->
     ask p [
+      ;; every node gets its position and name
       setxy (item 0 (item 0 coords)) (item 1 (item 0 coords))
       set name item 0 names
+      ;; if node is a busstop, set attributes accordingly
       ifelse member? "stop" name [
         set busstop? true
         set hidden? false
+        set shape "circle"
+        set size 15
+        set color violet
       ]
+      ;; if node is not a busstop hide it
       [
         set busstop? false
+        set hidden? true
       ]
       ;; remove first item from list so next iteration uses new data
       set coords remove-item 0 coords
@@ -977,6 +981,8 @@ to setup-bustrack
     set counter counter - 1
   ]
 end
+
+;; ===== BEHAVIOUR FUNCTIONS =====
 
 ;; executed each tick in go-function; determines status of bus and calls functions respectively
 to process-bus
@@ -1166,14 +1172,6 @@ to boardPassengers
   ]
 end
 
-to updateCurrentPassengers
-  let curPas 0
-  ask busses [
-    set curPas curPas + (count passengers)
-  ]
-  set current_passengers curPas
-end
-
 ;; sets the passengerStatus attribute the calling bus
 to checkPassengers
   ifelse passengers = no-turtles [
@@ -1191,6 +1189,17 @@ to checkPassengers
     ]
   ]
 end
+
+;; updates the monitor which counts the current passengers of all busses
+to updateCurrentPassengers
+  let curPas 0
+  ask busses [
+    set curPas curPas + (count passengers)
+  ]
+  set current_passengers curPas
+end
+
+
 
 
 
