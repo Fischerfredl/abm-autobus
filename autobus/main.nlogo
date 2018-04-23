@@ -11,16 +11,15 @@ globals [
   max-cars
   cars-spawn-points
   bikers-spawn-points
-  dropoff_total
   dropoff_bhouse
   dropoff_enterpriseC
   dropoff_center
   dropoff_tram
-  getin_total
   getin_bhouse
   getin_enterpriseC
   getin_center
   getin_tram
+  passengers_transported
   current_passengers
   current_tramriders_waiting
   tramriders_skipped_bus
@@ -198,8 +197,17 @@ to setup-patches
     if (misc = 5) or (misc = 10) or (misc = 1) or (misc = 2)[ ;; dark_green, green_area, abschnitt, bauflaeche
       set pcolor green
     ]
-    if (misc = 6) or (misc = 7) or (misc = 8) or (misc = 9)[ ;; enterprises
+    if (misc = 9)[ ;; enterprises
       set pcolor orange
+    ]
+    if (misc = 6) [
+      set pcolor pink
+    ]
+    if (misc = 7) [
+      set pcolor cyan
+    ]
+    if (misc = 8) [
+      set pcolor sky
     ]
     if misc = 13 [ ;; tram
       set pcolor red
@@ -1079,8 +1087,7 @@ to boardPassengers
   set boardingFinished? true
   checkPassengers ;; update color and passenger status of the bus
 
-  set dropoff_total dropoff_total + (count dropouts)
-  set getin_total getin_total + passengersBoarded
+  set passengers_transported passengers_transported + (count dropouts)
   if [name] of currentStop = "bus_stop_bhouse" [
     set dropoff_bhouse dropoff_bhouse + (count dropouts)
     set getin_bhouse getin_bhouse + passengersBoarded
@@ -2988,10 +2995,10 @@ time
 11
 
 MONITOR
-1058
-327
-1245
-372
+1316
+321
+1503
+366
 count_employees_enterprise_a
 count_employees_enterprise_a
 17
@@ -2999,10 +3006,10 @@ count_employees_enterprise_a
 11
 
 MONITOR
-1058
-373
-1245
-418
+1317
+370
+1504
+415
 NIL
 count_employees_enterprise_b
 17
@@ -3010,10 +3017,10 @@ count_employees_enterprise_b
 11
 
 MONITOR
-1058
-419
-1245
-464
+1318
+418
+1505
+463
 NIL
 count_employees_enterprise_c
 17
@@ -3021,10 +3028,10 @@ count_employees_enterprise_c
 11
 
 MONITOR
-1058
-466
-1245
-511
+1187
+819
+1374
+864
 NIL
 count_visitors_bhouse
 17
@@ -3032,10 +3039,10 @@ count_visitors_bhouse
 11
 
 MONITOR
-1056
-212
-1233
-257
+1136
+370
+1313
+415
 tramriders waiting for ns tram
 tramriders with [tr_current_destination = \"tram_ns\" and xcor = 809 and ycor = 172]
 17
@@ -3063,10 +3070,10 @@ Bus is going between 5:30 and 21:00. You can choose the interval between the bus
 1
 
 MONITOR
-1058
-262
-1235
-307
+1137
+419
+1314
+464
 tramriders waiting for sn tram
 tramriders with [tr_current_destination = \"tram_sn\" and xcor = 830 and ycor = 162]
 17
@@ -3084,10 +3091,10 @@ number-of-busses
 2
 
 MONITOR
-932
-10
-1034
-55
+1136
+217
+1238
+262
 NIL
 dropoff_bhouse
 0
@@ -3095,10 +3102,10 @@ dropoff_bhouse
 11
 
 MONITOR
-932
-57
-1058
-102
+1240
+217
+1366
+262
 NIL
 dropoff_enterpriseC
 0
@@ -3106,10 +3113,10 @@ dropoff_enterpriseC
 11
 
 MONITOR
-933
-151
-1020
-196
+1468
+217
+1555
+262
 NIL
 dropoff_tram
 0
@@ -3117,32 +3124,21 @@ dropoff_tram
 11
 
 MONITOR
-932
-104
-1029
-149
+1368
+217
+1465
+262
 NIL
 dropoff_center
 17
 1
 11
 
-MONITOR
-933
-198
-1020
-243
-NIL
-dropoff_total
-0
-1
-11
-
 PLOT
-1044
-10
-1244
-160
+931
+166
+1131
+316
 current_passengers
 time
 pasengers
@@ -3157,10 +3153,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot current_passengers"
 
 MONITOR
-933
-272
-1021
-317
+1143
+166
+1231
+211
 NIL
 getin_bhouse
 0
@@ -3168,10 +3164,10 @@ getin_bhouse
 11
 
 MONITOR
-934
-321
-1046
-366
+1247
+165
+1359
+210
 NIL
 getin_enterpriseC
 0
@@ -3179,10 +3175,10 @@ getin_enterpriseC
 11
 
 MONITOR
-934
-368
-1017
-413
+1374
+165
+1457
+210
 NIL
 getin_center
 0
@@ -3190,10 +3186,10 @@ getin_center
 11
 
 MONITOR
-935
-416
-1008
-461
+1471
+166
+1544
+211
 NIL
 getin_tram
 17
@@ -3201,21 +3197,10 @@ getin_tram
 11
 
 MONITOR
-935
-463
-1008
-508
-NIL
-getin_total
-0
-1
-11
-
-MONITOR
-1289
-14
-1364
-59
+1137
+686
+1212
+731
 car-count
 count cars
 0
@@ -3223,10 +3208,10 @@ count cars
 11
 
 PLOT
-1390
-13
-1590
-163
+932
+629
+1132
+779
 car-count
 time
 car-count
@@ -3241,10 +3226,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot count cars"
 
 PLOT
-1296
-267
-1496
-417
+931
+321
+1131
+471
 current_tramriders_waiting
 time
 tramriders waiting
@@ -3259,10 +3244,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot current_tramriders_waiting"
 
 MONITOR
-1296
-428
-1434
-473
+1136
+321
+1274
+366
 tramriders skipped bus
 tramriders_skipped_bus
 17
@@ -3270,10 +3255,10 @@ tramriders_skipped_bus
 11
 
 PLOT
-1300
-501
-1500
-651
+931
+476
+1131
+626
 pedestrian-count
 time
 pedestrian-count
@@ -3286,6 +3271,17 @@ false
 "" ""
 PENS
 "default" 1.0 0 -5298144 true "" "plot count pedestrians"
+
+MONITOR
+955
+111
+1104
+156
+NIL
+passengers_transported
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
