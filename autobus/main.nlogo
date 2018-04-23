@@ -41,6 +41,10 @@ globals [
 
   distance_to_pedestrian ;distance of a bus stop to a pedestrian
   rand_pedestrian ;random number to spawn different pedestrians
+  nr_pedestrians_who_waited_in_vain
+  nr_of_bus_pedestrians
+  nr_pedestrians
+
 
   rush-hour-factor
 ]
@@ -68,6 +72,7 @@ pedestrians-own[
   movement_status
   exit_bus_stop
   waiting-time
+  tr_waiting_time
 ]
 
 patches-own [
@@ -150,10 +155,17 @@ to setup
   set time ""
   setup-bus
   setup-schedule
-  setup-bikers
-  setup-cars
   setup-rush-hour-factor
-  setup-pedestrians
+  if (want-bikers?) [
+    setup-bikers
+  ]
+  if (want-cars?) [
+    setup-cars
+  ]
+
+  if (want-pedestrians?) [
+    setup-pedestrians
+  ]
   setup-tr_nodes
 
 end
@@ -261,17 +273,24 @@ to go
     stop
   ]
   process-bus
-  process-bikers
-  process-cars
   process-rush-hour-factor
-  spawn-pedestrians
-  move-pedestrians
+  if (want-bikers?) [
+    process-bikers
+  ]
+  if (want-cars?) [
+    process-cars
+  ]
+  if (want-pedestrians?)[
+    spawn-pedestrians
+    move-pedestrians
+  ]
   check-tram
   move-tramriders
   updateCurrentPassengers
   update-plots
   tick
 end
+
 
 
 
@@ -484,6 +503,10 @@ end
 
 to setup-pedestrians
   ask pedestrians[die]
+
+  set nr_pedestrians_who_waited_in_vain 0
+  set nr_of_bus_pedestrians 0
+  set nr_pedestrians 0
 end
 
 
@@ -502,6 +525,7 @@ to spawn-pedestrians
       set shape "person"
       set color red
       set size 10
+      set tr_waiting_time 0
 
       if(rand_pedestrian = 0) [
         set xcor 307
@@ -561,13 +585,17 @@ to spawn-pedestrians
         set goaly 345
       ]
 
-      if (rand_pedestrian = 0 or rand_pedestrian = 2 or rand_pedestrian = 4 or rand_pedestrian = 5 or rand_pedestrian = 6)[
+      ifelse (rand_pedestrian = 0 or rand_pedestrian = 2 or rand_pedestrian = 4 or rand_pedestrian = 5 or rand_pedestrian = 6)[
         set pedestrian_type "no_bus"
         set waiting-time 0
+      ][
+      set nr_of_bus_pedestrians nr_of_bus_pedestrians + 1
       ]
 
       facexy goalx goaly
     ]
+
+    set nr_pedestrians nr_pedestrians + 1
   ]
 end
 
@@ -820,10 +848,14 @@ to pedestrian-wait
   ifelse (waiting-time > 0) [
     ;decrement waiting time
     set waiting-time waiting-time - 1
+    set tr_waiting_time tr_waiting_time + 1
   ]
   [
     ;pedestrian gives up waiting and decides to walk
     set movement_status "no_more_waiting"
+    set nr_pedestrians_who_waited_in_vain nr_pedestrians_who_waited_in_vain + 1
+
+
   ]
 end
 
@@ -3276,6 +3308,81 @@ passengers_transported
 17
 1
 11
+
+SWITCH
+215
+17
+386
+50
+want-pedestrians?
+want-pedestrians?
+0
+1
+-1000
+
+SWITCH
+215
+55
+351
+88
+want-bikers?
+want-bikers?
+0
+1
+-1000
+
+SWITCH
+215
+93
+340
+126
+want-cars?
+want-cars?
+0
+1
+-1000
+
+MONITOR
+5
+859
+241
+904
+Pedestrians intending to take the bus ( % )
+round(nr_of_bus_pedestrians / nr_pedestrians * 100)
+17
+1
+11
+
+MONITOR
+252
+859
+452
+904
+Pedestrians who waited in vain ( % )
+round(nr_pedestrians_who_waited_in_vain / nr_of_bus_pedestrians * 100)
+17
+1
+11
+
+TEXTBOX
+256
+825
+474
+867
+Percentage of pedestrians who intended to take the bus but waited in vain
+11
+0.0
+1
+
+TEXTBOX
+7
+825
+231
+858
+Percentage of pedestrians who intend to take the bus if they get near a bus station
+11
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
