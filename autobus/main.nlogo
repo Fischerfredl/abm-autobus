@@ -173,12 +173,8 @@ to setup
   setup-bus
   setup-schedule
   setup-rush-hour-factor
-  if (want-bikers?) [
-    setup-bikers
-  ]
-  if (want-cars?) [
-    setup-cars
-  ]
+  setup-bikers
+  setup-cars
 
   if (want-pedestrians?) [
     setup-pedestrians
@@ -3359,7 +3355,7 @@ SWITCH
 124
 want-bikers?
 want-bikers?
-1
+0
 1
 -1000
 
@@ -3370,7 +3366,7 @@ SWITCH
 162
 want-cars?
 want-cars?
-1
+0
 1
 -1000
 
