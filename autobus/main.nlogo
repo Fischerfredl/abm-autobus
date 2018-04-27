@@ -512,11 +512,11 @@ end
 
 to process-rush-hour-factor
   if (time = "05:30") [set rush-hour-factor 0.3]
-  if (time = "06:00") [set rush-hour-factor 0.8]
-  if (time = "07:00") [set rush-hour-factor 1.0]
-  if (time = "08:00") [set rush-hour-factor 0.6]
-  if (time = "09:00") [set rush-hour-factor 0.4]
-  if (time = "10:00") [set rush-hour-factor 0.2]
+  if (time = "06:00") [set rush-hour-factor 0.6]
+  if (time = "07:00") [set rush-hour-factor 0.8]
+  if (time = "08:00") [set rush-hour-factor 0.9]
+  if (time = "09:00") [set rush-hour-factor 0.7]
+  if (time = "10:00") [set rush-hour-factor 0.3]
   if (time = "11:00") [set rush-hour-factor 0.1]
   if (time = "12:00") [set rush-hour-factor 0.3]
   if (time = "13:00") [set rush-hour-factor 0.2]
