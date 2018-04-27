@@ -409,7 +409,7 @@ end
 ;; setup global variables
 to setup-cars
   if (max-cars = 0) [ set max-cars 8] ;; set only if not already set via slider
-  set cars-spawn-points [[278 611] [16 530] [384 44] [615 21] [884 302]]
+  set cars-spawn-points [[278 611] [16 526] [384 44] [615 21] [884 302]]
 end
 
 ;; used in go
@@ -446,11 +446,18 @@ end
 
 to-report save-to-move [ moving-car ]
   let turtle-in-sight false
+  let is-blocking-bus false
 
   ask moving-car [
     ask turtles in-cone (velocity * 5) 10 [
       if (not is-car? self and not is-node? self and not is-tr_node? self) [
-        set turtle-in-sight true
+        ;; edge case: bus is waiting on bustop thus blocking cars
+        if (is-bus? self and status = "waiting") [
+          set is-blocking-bus true
+        ]
+        if (not is-blocking-bus) [
+          set turtle-in-sight true
+        ]
       ]
     ]
   ]
