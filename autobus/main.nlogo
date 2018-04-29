@@ -537,7 +537,7 @@ end
 ;;
 to spawn-pedestrians
   ; spawn a pedestrian every 15 / rush-hour-factor seconds/ticks
-  if (ticks mod (15 / rush-hour-factor) = 0) [
+  if (ticks mod round(15 / rush-hour-factor) = 0) [
 
     ; set a random number to spawn a random pedestrian-type
     set rand_pedestrian random 7
