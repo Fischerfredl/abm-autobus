@@ -18,19 +18,20 @@ globals [
   bikers-spawn-points
 
   ;; =====tram related=====
+  ;; 'ns' is for 'north to south' (From Stadtbergen to Haunstetten West). 'sn' represents the opposite direction.
   tram_arrival_ns ;; Second of the arrival of a tram going from north to south
   tram_arrival_sn ;; Second of the arrival of a tram going from south to north
-  tram_exists_ns ;; Dummy-Variable ob eine Tram existiert (Evtl überflüssig) => Only one tram per direction at once possible
-  tram_exists_sn
+  tram_exists_ns ;; Dummy-Variable for checking if a tram exists. Only one tram per direction at once possible
+  tram_exists_sn ;; Dummy-Variable for checking if a tram exists. Only one tram per direction at once possible
   tram_passengers_ns ;; How many passengers the tram going from north to south is transporting that want to get out at Innovationspark/LFU
   tram_passengers_sn ;; How many passengers the tram going from south to north is transporting that want to get out at Innovationspark/LFU
 
   ;; =====tramrider related=====
-  ;; Counting the employees for not over-spawning employees. The function is check-employees
+  ;; Counting the employees for not over-spawning employees.
   count_employees_enterprise_a ;; all employees currently existing that are assigned to Enterprise A
   count_employees_enterprise_b ;; all employees currently existing that are assigned to Enterprise B
   count_employees_enterprise_c ;; all employees currently existing that are assigned to Enterprise C
-  count_visitors_bhouse ;; all employees currently existing that are assigned to the Boarding House
+  count_visitors_bhouse ;; all visitors currently existing that are assigned to the Boarding House
 
   ;; =====pedestrian related=====
   distance_to_pedestrian ;distance of a bus stop to a pedestrian
@@ -119,7 +120,7 @@ pedestrians-own[
 
 trams-own[
   t_type ;; Type of the Tram. Splitted in two types, the new trams (NF8 Combino and Cityflex) and the old trams (GT6M)
-  t_direction ;; Direction into which the tram goes. 'ns' is for 'north to south' (From Stadtbergen to Haunstetten West). 'sn' is for the opposite direction.
+  t_direction ;; Direction into which the tram goes. 'ns' is for 'north to south' (From Stadtbergen to Haunstetten West). 'sn' represents the opposite direction.
   t_stop_duration ;; How long the tram stands at the stop
   t_duration_after_empty ;; How long the tram stands at the stop after all the passengers wanting to get out left the tram
   t_duration_after_boarding ;; How long the tram stands at the stop after the boarding is done completely (all the passengers wanting to get out left the tram and all the passengers wanting to get in entered the tram)
@@ -1200,18 +1201,19 @@ end
 
 to check-schedule
   ;; Tram schedule for the station Innovationspark/LFU (Date of Last Update: 31.03.2018)
-  ;; For simplifying purposes, trams regularly only arrive at a full minute
+  ;; For simplifying purposes, trams regularly only arrive at a full minute (e.g. 0 seconds)
   if seconds = 0 [
+    ;; If hours and minutes are correct, allow the spawning of a tram by setting the tram_arrival variable to 1
     if hours = 0 [
-      if (minutes = 13 or minutes = 0)[ ;;minutes = 0 ist testweise, nachher wieder rauswerfen
+      if (minutes = 13)[
         set tram_arrival_ns 1]
-      if (minutes = 13 or minutes = 28 or minutes = 0)[
+      if (minutes = 13 or minutes = 28)[
         set tram_arrival_sn 1]
     ]
     if hours = 1 [
-      if (minutes = 13 or minutes = 0)[ ; die komplette hour ist testweise, nachher wieder rauswerfen
+      if (minutes = 13)[
         set tram_arrival_ns 1]
-      if (minutes = 28 or minutes = 0)[
+      if (minutes = 28)[
         set tram_arrival_sn 1]
     ]
 
@@ -1304,6 +1306,7 @@ end
 
 
 to check-tram
+  ;; The procedure of the tram
 
   ;; Checking the schedule of the tram
   check-schedule
@@ -1314,7 +1317,7 @@ to check-tram
   ;; Board entering people
   board-people
 
-  ;; Spawn trams
+  ;; Spawn trams if possible
   spawn-trams
 
   ;; Proceed the animations of the trams
@@ -1328,22 +1331,18 @@ to check-tram
   set tram_arrival_sn 0
 end
 
-;;to check-employees
-;;  set count_employees_enterprise_a count tramriders with [tr_ultimate_destination = "enterprise a"] + 0 ;; Zeug noch anfügen
-;;  set count_employees_enterprise_b count tramriders with [tr_ultimate_destination = "enterprise b"] + 0
-;;  set count_employees_enterprise_c count tramriders with [tr_ultimate_destination = "enterprise c"] + 0
-;;  set count_visitors_bhouse count tramriders with [tr_ultimate_destination = "boarding house"] + 0
-;;end
 
 to check-times
   ;; Calculating the standing time
   ask trams with [t_status = "active" or t_status = "closed"][set t_stop_duration (t_stop_duration + 1)] ;; Increasing by 1 every second
 
   ;; Calculating the standing time after the people wanting to get out left the tram
+  ;; Only for trams that are not standing at the station
+  ;; Only when passengers that wanted to get out are 0
   ask trams with [t_direction = "ns" and t_status != "arriving" and t_status != "departing"][if tram_passengers_ns = 0 [set t_duration_after_empty (t_duration_after_empty + 1)]] ;; Increasing by 1 every second
   ask trams with [t_direction = "sn" and t_status != "arriving" and t_status != "departing"][if tram_passengers_sn = 0 [set t_duration_after_empty (t_duration_after_empty + 1)]] ;; Increasing by 1 every second
 
-  ;; Departure of a tram once it surpassed all standing-duration-minimas
+  ;; Departure of a tram once it surpassed all standing-duration-minimas (general standing time, time after people leaving the tram, time after complete boarding process)
   ;; Direction: Haunstetten West
   if tram_exists_ns = 1 [
     ask trams [if (t_status = "closed" and t_stop_duration > 15 and t_duration_after_empty >= 10 and t_duration_after_boarding >= 10) [set t_status "departing"]]
@@ -1363,7 +1362,7 @@ to board-people
     ;; Setting a maximum for the number of people being able to enter the tram at the same time based on the trams type (new vs old)
     if t_type = "old" and people-getting-in-tram-ns > 8 [set people-getting-in-tram-ns 8]
     if t_type = "new" and people-getting-in-tram-ns > 14 [set people-getting-in-tram-ns 14]
-    ;; Simulating the boarding process as killing the boarding agents (Only if the trams' doors are open)
+    ;; Simulating the boarding process by killing the entering agents (Only if the trams' doors are open)
     if t_status = "active" [
       if tram_passengers_ns = 0 [ask n-of people-getting-in-tram-ns tramriders with [tr_current_destination = "tram_ns" and xcor = 809 and ycor = 172] [die]]
     ]
@@ -1380,7 +1379,7 @@ to board-people
     ;; Setting a maximum for the number of people being able to enter the tram at the same time based on the trams type (new vs old)
     if t_type = "old" and people-getting-in-tram-sn > 8 [set people-getting-in-tram-sn 8]
     if t_type = "new" and people-getting-in-tram-sn > 14 [set people-getting-in-tram-sn 14]
-    ;; Simulating the boarding process as killing the boarding agents
+    ;; Simulating the boarding process by killing the entering agents (Only if the trams' doors are open)
     if t_status = "active" [
       if tram_passengers_sn = 0 [ask n-of people-getting-in-tram-sn tramriders with [tr_current_destination = "tram_sn" and xcor = 830 and ycor = 162] [die]]
     ]
@@ -1395,7 +1394,7 @@ end
 to spawn-trams
   ;; Spawning of a tram
   ;; Direction: Haunstetten West
-  ;; Only if the arrival is true and there is no tram already existing
+  ;; Only if the arrival is 1 and there is no tram already existing
   if (tram_arrival_ns = 1 and tram_exists_ns = 0) [
     create-trams 1 [
       ;; Setting the model of the tram at random
@@ -1439,7 +1438,7 @@ to spawn-trams
   ]
 
   ;; Direction: Stadtbergen
-  ;; Only if the arrival is true and there is no tram already existing
+  ;; Only if the arrival is 1 and there is no tram already existing
   if (tram_arrival_sn = 1 and tram_exists_sn = 0) [
     create-trams 1 [
       ;; Setting the model of the tram at random
@@ -1553,7 +1552,7 @@ end
 to trams-spawn-tramriders
   ;; Spawning tramriders
 
-  ;; The spawning of the tramriders is subdivisioned by 1. the tram's direction, 2. the tram's model and 3. the tram's doors
+  ;; The spawning of the tramriders is subdivisioned by 1. the tram's direction, 2. the tram's model (new or old) and 3. the tram's doors
 
   ;; Direction: Haunstetten West
   ;; Selecting the tram which is being active and going into the right direction for the spawning procedure
@@ -1962,11 +1961,11 @@ end
 
 
 to tramrider-spawning-process
-
         ;; Setting the cosmetics
         set shape "person"
         set color yellow
         set size 10
+
         ;; Setting the variables
         ;; Since all tramriders intend to go to the bus stop, the movement status is also set to "going to bus stop"
         set movement_status "going to bus stop"
@@ -2280,9 +2279,6 @@ to setup-tr_nodes
     setxy 234 554
     hide-turtle
   ]
-
-
-
 end
 
 to move-tramriders
@@ -2294,11 +2290,11 @@ to move-tramriders
     check-tramriders-inter-and-enterprise-waypoints
     ;; Going to tram
     check-tramriders-waypoints-going-to-tram
+
     ;; Getting off the bus
     tramriders-get-off-bus
     ;; The tramriders are working when they reach their Enterprise
     tramriders-work
-
 
     ;; Ragemode-Calculation
     ;; Increasing the time waiting for the bus by one each second
@@ -2317,7 +2313,6 @@ to move-tramriders
       ;; Adding 1 to the total count of tramriders that missed the bus everytime a tramrider goes to tram/work by foot instead of taking the bus
       set tramriders_skipped_bus (tramriders_skipped_bus + 1)
     ]
-
 
     ;; Starting the waiting-on-the-bus process
     ;; When a tramrider reaches the bus stop he wanted to go to, his status is turned to "waiting"
@@ -2349,7 +2344,7 @@ to move-tramriders
     if movement_status != "working" [
       set time_between_destinations (time_between_destinations + 1)]
 
-    ;; Global Tramrider Variables for Outputs
+    ;; Global Tramrider Variables for count output
     set current_tramriders_waiting count tramriders with [movement_status = "waiting_for_bus"]
 
     ;; Storing the time it took to get to the tram in a list
@@ -2414,22 +2409,22 @@ to check-tramriders-waypoints-going-to-work
     ]
     ;; Destination: Enterprise C
     if tr_ultimate_destination = "enterprise c" [
-      if tr_random_val <= 70 [
+      if tr_random_val <= 70 [ ;; 70% chance for chosing the 1. route
         set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint1"]
         face tr_target
       ]
-      if tr_random_val > 70 [
+      if tr_random_val > 70 [ ;; 30% chance for chosing the 1. route
         set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint1"]
         face tr_target
       ]
     ]
     ;; Destination: Boarding House
     if tr_ultimate_destination = "boarding house" [
-      if tr_random_val <= 80 [
+      if tr_random_val <= 80 [ ;; 80% chance for chosing the 1. route
         set tr_target one-of tr_nodes with [tr_n_name = "r1_waypoint1"]
         face tr_target
       ]
-      if tr_random_val > 80 [
+      if tr_random_val > 80 [ ;; 20% chance for chosing the 1. route
         set tr_target one-of tr_nodes with [tr_n_name = "r2_waypoint1"]
         face tr_target
       ]
@@ -2438,7 +2433,7 @@ to check-tramriders-waypoints-going-to-work
 
 
   ;; Route 1
-  ;; The northern route, going through the pedestrian precinct
+  ;; The northern route, leading through the pedestrian precinct
   if distance tr_target = 0 and [tr_n_name] of tr_target = "" and tr_current_destination = ""
     [set tr_target one-of tr_nodes with [tr_n_name = ""]
       face tr_target]
@@ -2690,7 +2685,6 @@ to check-tramriders-waypoints-going-to-tram
        face tr_target]
 
   ;; Bus Stop Center
-
   if distance tr_target = 0 and [tr_n_name] of tr_target = "r2_waypoint8"
       [set tr_target one-of tr_nodes with [tr_n_name = "inter_r1r2_waypoint2"]
         face tr_target]
@@ -2814,10 +2808,6 @@ to tramriders-get-off-bus
       set tr_target one-of tr_nodes with [tr_n_name = "TZI NE-Corner"] face tr_target
     ]
   ]
-
-
-
-
 end
 
 
@@ -2898,8 +2888,6 @@ to tramriders-work
       show-turtle
     ]
   ]
-
-
 end
 
 
@@ -2918,10 +2906,6 @@ end
 
 
 to check-collision
-  ;; Trams general
-;  if any? trams-on patch-ahead 1
-;    [set tr_stop true]
-
   ;; Tram-crossing for sn tramdrivers wanting to leave the tram station
   if tr_current_destination = "bus_stop_tram" and xcor = 852 and ycor = 200 [
     if any? trams with [t_direction = "ns" and t_status ="arriving"]
@@ -3439,7 +3423,7 @@ Cars drive around on the grey streets and stop if there is a bus in front of the
 
 ## HOW TO USE IT
 
-The INTERVAL chooser determines the interval of the bus departures in minutes. The interval can be set to 10, 20 or 30 minutes.
+The INTERVAL chooser determines the interval of the bus departures in minutes. The interval can be set to 10, 15 or 20 minutes.
 
 The NUMBER-OF-buses chooser sets the number of buses which drive on the route simultaniously. The number of buses can be chosen between 1, 2 and 3.
 
