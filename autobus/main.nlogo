@@ -120,7 +120,6 @@ pedestrians-own[
 trams-own[
   t_type ;; Type of the Tram. Splitted in two types, the new trams (NF8 Combino and Cityflex) and the old trams (GT6M)
   t_direction ;; Direction into which the tram goes. 'ns' is for 'north to south' (From Stadtbergen to Haunstetten West). 'sn' is for the opposite direction.
-  t_passengers ;; How many passengers the tram is transporting that want to get out at Innovationspark/LFU (vmtl sinnlos, da globale Variable exisitert)
   t_stop_duration ;; How long the tram stands at the stop
   t_duration_after_empty ;; How long the tram stands at the stop after all the passengers wanting to get out left the tram
   t_duration_after_boarding ;; How long the tram stands at the stop after the boarding is done completely (all the passengers wanting to get out left the tram and all the passengers wanting to get in entered the tram)
