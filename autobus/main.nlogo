@@ -3404,6 +3404,16 @@ nr_pedestrians_who_waited_in_vain + tramriders_skipped_bus
 1
 11
 
+TEXTBOX
+10
+10
+148
+108
+setup-map creates the environment. (This may take some time depending on the computer specifications)
+11
+0.0
+1
+
 @#$#@#$#@
 ## WHAT IS IT?
 
