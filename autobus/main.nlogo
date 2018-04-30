@@ -68,7 +68,7 @@ globals [
 breed [nodes node] ;; nodes are agents representing the stops and turning points of the bus route
 breed [bikers biker]
 breed [cars car]
-breed [busses bus]
+breed [buses bus]
 breed [pedestrians pedestrian] ;; breed pedestrians
 breed [trams tram] ;; agents representing the trams
 breed [tramriders tramrider] ;; agents representing the tramriders
@@ -91,7 +91,7 @@ cars-own [
   time-alive
 ]
 
-busses-own [
+buses-own [
   target              ;; the node where the bus is currently driving towards
   status              ;; information about the current state of this agent ("driving", "waiting")
   route               ;; list containing the nodes which represents the current route of the bus; either from boarding house to TZI or vice versa
@@ -174,10 +174,7 @@ to setup
   setup-rush-hour-factor
   setup-bikers
   setup-cars
-
-  if (want-pedestrians?) [
-    setup-pedestrians
-  ]
+  setup-pedestrians
   setup-tr_nodes
 end
 
@@ -297,16 +294,10 @@ to go
   ]
   process-bus
   process-rush-hour-factor
-  if (want-bikers?) [
-    process-bikers
-  ]
-  if (want-cars?) [
-    process-cars
-  ]
-  if (want-pedestrians?)[
-    spawn-pedestrians
-    move-pedestrians
-  ]
+  process-bikers
+  process-cars
+  spawn-pedestrians
+  move-pedestrians
   check-tram
   move-tramriders
   updateCurrentPassengers
@@ -546,7 +537,7 @@ end
 ;;
 to spawn-pedestrians
   ; spawn a pedestrian every 15 / rush-hour-factor seconds/ticks
-  if (ticks mod (15 / rush-hour-factor) = 0) [
+  if (ticks mod round(15 / rush-hour-factor) = 0) [
 
     ; set a random number to spawn a random pedestrian-type
     set rand_pedestrian random 7
@@ -911,8 +902,8 @@ end
 ;; creates bus instances and sets its initial attribute values
 to setup-bus
   setup-bustrack
-  ;; create busses depending on what the user selected and place them at bus stop "tram"
-  create-busses number-of-busses [
+  ;; create buses depending on what the user selected and place them at bus stop "tram"
+  create-buses number-of-buses [
     set shape "autobus"
     set color white
     set size 20
@@ -925,10 +916,10 @@ to setup-bus
     set waited 0
     set passengers no-turtles
   ]
-  ;; if user selected 2 or 3 busses, overwrite some of the attributes of one bus to place it at the boarding house station
-  ;; this way (with 3 busses) two of them are initially at the tram station where more passengers are awaited
-  if count busses > 1 [
-    ask one-of busses [
+  ;; if user selected 2 or 3 buses, overwrite some of the attributes of one bus to place it at the boarding house station
+  ;; this way (with 3 buses) two of them are initially at the tram station where more passengers are awaited
+  if count buses > 1 [
+    ask one-of buses [
       set target one-of nodes with [name = "bus_stop_bhouse"]
       move-to target
       set route routeBT ;; set the route "boardinghouse to tram"
@@ -936,7 +927,7 @@ to setup-bus
   ]
 end
 
-;; sets up the nodes which enable busses to move along the determined route
+;; sets up the nodes which enable buses to move along the determined route
 to setup-bustrack
   let coords [[172 517] [166 384] [165 365] [415 346] [733 320] [723 216] [797 208]] ;; xy-coords of the nodes
   let names ["bus_stop_bhouse" "bus_stop_enterpriseC" "turn_1" "bus_stop_center" "turn_2" "turn_3" "bus_stop_tram"] ;; names of the nodes
@@ -988,7 +979,7 @@ end
 
 ;; executed each tick in go-function; determines status of bus and calls functions respectively
 to process-bus
-  ask busses [
+  ask buses [
     ifelse status != "waiting" [ ;; if status is not waiting behave depending on status
       if status = "driving" [
         busDrive
@@ -1009,7 +1000,7 @@ end
 
 ;; bus behaviour while status is "driving"
 to busDrive
-  ask busses [
+  ask buses [
     if status = "driving" [
       ifelse distance target <= 3 [               ;; check if bus is near a node and - if yes - move it to this node
         face target
@@ -1032,7 +1023,7 @@ end
 
 ;; bus behaviour while status is "boarding"
 to busBoard
-  ask busses [
+  ask buses [
     if status = "boarding" [
       ifelse boardingFinished? = false [
         boardPassengers
@@ -1192,10 +1183,10 @@ to checkPassengers
   ]
 end
 
-;; updates the monitor which counts the current passengers of all busses
+;; updates the monitor which counts the current passengers of all buses
 to updateCurrentPassengers
   let curPas 0
-  ask busses [
+  ask buses [
     set curPas curPas + (count passengers)
   ]
   set current_passengers curPas
@@ -3117,7 +3108,7 @@ CHOOSER
 interval
 interval
 10 15 20
-0
+2
 
 TEXTBOX
 521
@@ -3145,8 +3136,8 @@ CHOOSER
 114
 808
 159
-number-of-busses
-number-of-busses
+number-of-buses
+number-of-buses
 1 2 3
 2
 
@@ -3343,39 +3334,6 @@ passengers_transported
 1
 11
 
-SWITCH
-332
-53
-503
-86
-want-pedestrians?
-want-pedestrians?
-0
-1
--1000
-
-SWITCH
-332
-91
-468
-124
-want-bikers?
-want-bikers?
-0
-1
--1000
-
-SWITCH
-332
-129
-457
-162
-want-cars?
-want-cars?
-0
-1
--1000
-
 MONITOR
 1389
 535
@@ -3465,39 +3423,37 @@ nr_pedestrians_who_waited_in_vain + tramriders_skipped_bus
 @#$#@#$#@
 ## WHAT IS IT?
 
-(a general understanding of what the model is trying to show or explain)
+This is a model of public transport, particularly public transport with an autonomous driving bus. It shows a map of a soon to be built district of Augsburg, Bavaria, which will be called 'Innovationspark'. Streets are represented by the color grey with white sidewalks. Blue areas are bikeways and footpaths at the same time. Orange areas are buildings that are not considered in this model. The pink and lighter blue areas represent the Buildings which are relevant for this model. The yellow area represents a boarding house. The bus is driving around the area on a set route and on a set schedule. Tram riders, pedestrians, bikers and cars are traversing the area. The population is depending on the time of day. Tram riders are represented by yellow person shaped agents, pedestrians by red person shaped agents. Cars and bikers have custom made agents shapes. The tram riders and pedestrians may take the bus to one of the bus stops, which are represented by purple dots on the map. 
 
 ## HOW IT WORKS
 
-(what rules the agents use to create the overall behavior of the model)
+The bus drives by its schedule and picks up pedestrians and workers who arrived by tram who are waiting at the bus stops. 
+
+Tram riders arrive at the tram station and walk to the near bus stop. If the bus is available, they will get on. If they have to wait, they only wait a certain amount of time before deciding to walk to their workplace. Most of them will work full time, an certain amount will work part time. After the working time is up, they will move back to the tram station by bus if available or by foot. 
+
+Pedestrians walk certain paths depending on their (random) starting point and destination. They only walk on sidewalks (white) or non-car areas (blue). When they reach a street crossing, they will cross the street. If a pedestrians want to take the bus and a bus stop is within 25 meters, they will walk to the bus stop and wait for a certain amount of time. If their waiting time has exceeded and no bus has arrived in the meantime, they will walk to their destination without taking a bus ever again. 
+
+Bikers traverse the area on the blue paths, but are not interacting with any other agent types. The number of bikers depends on the time of day.
+
+Cars drive around on the grey streets and stop if there is a bus in front of them. They only interact with the bus agents.
 
 ## HOW TO USE IT
 
-(how to use the model, including a description of each of the items in the Interface tab)
+The INTERVAL chooser determines the interval of the bus departures in minutes. The interval can be set to 10, 20 or 30 minutes.
+
+The NUMBER-OF-buses chooser sets the number of buses which drive on the route simultaniously. The number of buses can be chosen between 1, 2 and 3.
+
+The SETUP-MAP button will set up the world 
+
+The SETUP button will reset all monitors and agents, but not the map
 
 ## THINGS TO NOTICE
 
-(suggested things for the user to notice while running the model)
+The model represents one day (5:30 AM to 10 PM). Each tick represents one second. Each patch represents the area on 1m x 1m.
 
 ## THINGS TO TRY
 
-(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
-
-## EXTENDING THE MODEL
-
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
-
-## NETLOGO FEATURES
-
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
-
-## RELATED MODELS
-
-(models in the NetLogo Models Library and elsewhere which are of related interest)
-
-## CREDITS AND REFERENCES
-
-(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
+Change the number of buses and their interval and see how much it influences the output parameters
 @#$#@#$#@
 default
 true
